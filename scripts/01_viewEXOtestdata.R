@@ -282,5 +282,5 @@ f <- list.files("googledrive_data/", include.dirs = F, full.names = T, recursive
 # remove the files
 file.remove(f)
 
-# now push your changes to github!!
+# now commit your changes and and push them to github!!
 
