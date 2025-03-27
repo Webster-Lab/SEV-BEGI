@@ -1,8 +1,11 @@
 #### read me ####
 
-# the purpose of this script is to compile and plot EXO1 files from the SEV-BEGI project. This script is specifically for working with test data sets (e.g., in lab and in field tests of batteries, monitoring protocols, etc.) Another script will be created for working with 'real" data sets that are part of our long-term time series for analysis and publication.  
+# the purpose of this script is to compile and plot EXO1 files from the SEV-BEGI project. 
+# This script is specifically for working with test data sets (e.g., in lab and in field tests of batteries, monitoring protocols, etc.) 
+# Another script will be created for working with "real" data sets that are part of our long-term time series for analysis and publication. These require combining multiple EXO files from multiple sondes, so the code is more sophisticated. This script is a good starting point to learning how to work with one file at a time. 
 
-# NOTE: DO NOT push raw EXO1 files to the github repo! They are often too large for this. The purpose of the google drive workflow is to handle all these files, whereas github handles the scripts :)
+# NOTE: DO NOT push raw EXO1 files to the github repo! They are often too large for this. The purpose of the google drive workflow is to handle all these files, whereas github handles the scripts and condensed datasets :)
+# The section below that "cleans up" the environment removes raw EXO files before pushing changes. 
 
 #### libraries ####
 library(googledrive)
@@ -10,6 +13,8 @@ library(tidyverse)
 library(zoo)
 
 #### load data from google drive ####
+
+# Now is a good time to pull changes from GitHub :)
 
 # delete all formally downloaded EXO files
 # NOTE: It is STRONGLY recommended that you delete all your local raw EXO1 files from the last time you downloaded them from google drive, then use the script below to import them anew EACH TIME you run this script. This assures that files are the unaltered files saved to google drive each time, and there are no discrepancies between what is being analyzed and what is in our google drive repositories by different people. We DO save and push complied and cleaned data in the repo so it can be used in the next step of analysis, but we don't need to keep the raw files anywhere but on google drive.
@@ -276,4 +281,6 @@ write.csv(SLOCbattest.ts, "results/01_viewEXOtestdata_results/SLOCbattest.ts.csv
 f <- list.files("googledrive_data/", include.dirs = F, full.names = T, recursive = T)
 # remove the files
 file.remove(f)
+
+# now push your changes to github!!
 
