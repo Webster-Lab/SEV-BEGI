@@ -25,6 +25,7 @@ file.remove(f)
 
 # download csv files only from "Roan's test data" folder
 ls_tibble <- googledrive::drive_ls("https://drive.google.com/drive/folders/1yaWdohEDKCaa30qQlYn0UeqFG-YFZTkc", type = "csv")
+
 2 # to give permission
 path <- "googledrive_data/"
 for (i in seq_along(ls_tibble$name)) {
