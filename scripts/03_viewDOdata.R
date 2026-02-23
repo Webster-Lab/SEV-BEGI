@@ -8,20 +8,23 @@
 # The section below that "cleans up" the environment removes raw EXO files before pushing changes. 
 
 #### libraries ####
-library(googledrive)
-library(tidyverse)
-library(lubridate)
+library(googledrive) #so we can interface with Google files
+library(tidyverse) #so we can a small amount of data transformation
+library(lubridate) #so we can change transform date-time data
 
 
 #### load data from google drive ####
 drive_auth() # log in to google from R
-2 #choose 2
 
-# make lsit of csv files only from "0_raw_MX801_csv" folder
+#choose 2 for authentication
+2 
+
+
+# make list of csv files only from "0_raw_MX801_csv" folder
 ls_tibble <- drive_ls("https://drive.google.com/drive/folders/19KqRIbufpV_db2ONUmBIygI_6xK7JGXj?usp=drive_link", pattern = ".csv")
 
-#tell R where I would like to save these files
-path <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/SEV_BEGI/Data/00_raw_MX801_csv"
+#tell R where I would like to save these files, save it to where ever you keep files locally
+path <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801_csv"
 
 #Download all files into local drive
 for (i in seq_along(ls_tibble$name)) {
@@ -33,9 +36,9 @@ for (i in seq_along(ls_tibble$name)) {
 }
 
 #Set working directory to that local drive, you must do this to get the function to work
-setwd ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/SEV_BEGI/Data/00_raw_MX801_csv")
+setwd ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801_csv")
 
-local<-"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/SEV_BEGI/Data/00_raw_MX801_csv" #set pathway
+local<-"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801_csv" #set pathway
 
 #upload all data from working directory
 do_list<- list.files(full.names = TRUE) #turns into a list
@@ -50,14 +53,21 @@ clean_do<- function(df) {
     filter(minute(date) %in% c(0, 15, 30, 45)) #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
 }
 
-do_data <- lapply(do_data, clean_do) #applys the function we just made to all my data listed
+do_data <- lapply(do_data, clean_do) #applies the function we just made to all my data listed
 names(do_data) <- sub("\\.csv$", "", basename(do_list)) #renames files to original files names
 
 for (i in seq_along(do_data)) {
   p <- ggplot(do_data[[i]], aes(date, do)) +
     geom_line() +
-    labs(title = names(do_data)[i]) +
+    labs(y = "Dissolved Oxygen mg/L",
+         x= "Date",
+         title = names(do_data)[i]) +
     theme_minimal()
   
   print(p)
 }
+
+#### clean up before pushing to github ####
+rm(list = ls()) #removing all things from the environment while I work on getting the commit right
+
+# now commit your changes and and push them to github!!
