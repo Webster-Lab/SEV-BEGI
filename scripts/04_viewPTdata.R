@@ -35,3 +35,34 @@ for (i in seq_along(ls_raw$name)) {  #create for loop for tibble
     overwrite = TRUE #overwrite anything in there
   )
 }
+
+#### Add data to R and do a minor clean ####
+#upload all data from local 03_raw_MX801 folder
+pt_list<- list.files(path = local, full.names = TRUE, pattern = ".csv") #turns into a list
+pt_data <- lapply(pt_list, read_csv) #read all files into R
+
+#creates a function that I can run on all my files listed
+clean_pt<- function(df) { 
+  df |>
+    rename(date = 2, pressure = 3, temp = 4) |> #renames cols to simpler names
+    mutate(date = mdy_hms(date))|>
+    mutate(date = round_date(date, unit = "5 minute")) |> # transforms all times to the nearest 5 mins
+    filter(minute(date) %in% c(0, 15, 30, 45)) #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
+}
+
+pt_data <- lapply(pt_data, clean_pt) #applies the function we just made to all my data listed
+names(pt_data) <- sub("\\.csv$", "", basename(pt_list)) #renames files to original files names
+
+#### generate and save plots to local drive ###
+for (i in seq_along(pt_data)) {   # Make a for loop to make a plots for all data files
+  p <- ggplot(pt_data[[i]], aes(date, pressure)) + #plot by time and do
+    geom_line() +
+    labs(y = "Pressure (kPa)",
+         x= "Date",
+         title = names(pt_data)[i]) +
+    theme_minimal()
+  print(p)
+  
+  plot_names <- paste0 ("plots/", names(do_data)[i], ".png") #make the plot names an object
+  
+  ggsave(plot_names, plot = p,  path = local) #saves plots to local folder
