@@ -63,6 +63,14 @@ for (i in seq_along(pt_data)) {   # Make a for loop to make a plots for all data
     theme_minimal()
   print(p)
   
-  plot_names <- paste0 ("plots/", names(do_data)[i], ".png") #make the plot names an object
+  plot_names <- paste0 ("plots/", names(pt_data)[i], ".png") #make the plot names an object
   
   ggsave(plot_names, plot = p,  path = local) #saves plots to local folder
+  
+}
+
+#### clean up before pushing to github ####
+rm(list = ls()) #removing all things from the environment 
+
+
+# now commit your changes and and push them to github!!
