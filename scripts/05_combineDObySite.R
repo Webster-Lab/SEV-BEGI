@@ -17,17 +17,18 @@ local <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03
 do_list<- list.files(path = local, full.names = TRUE, pattern = ".csv") #turns into a list
 
 
-do_data <- lapply(do_list, read_csv) #read all files into R
+
+do_data <- do_data |>
+  mutate(site = sub("\\..*", "", sub(".*_", "", basename(file))))
 
 #creates a function that I can run on all my files listed
-clean_do<- function(df, name) { 
-  df |>
+do_data <- do_data |>
     rename(date = 2, temp_C = 3, do_mg_L = 4) |> #renames cols to simpler names
     mutate(
       date = mdy_hms(date),
       date = round_date(date, unit = "5 minute")) |> # transforms all times to the nearest 5 mins
     filter(minute(date) %in% c(0, 15, 30, 45)) #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
-}
+
 
 do_data <- lapply(do_data, clean_do) #applies the function we just made to all my data listed
 
