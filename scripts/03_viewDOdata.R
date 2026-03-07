@@ -45,7 +45,7 @@ do_data <- lapply(do_list, read_csv) #read all files into R
 #creates a function that I can run on all my files listed
 clean_do<- function(df) { 
   df |>
-    rename(date = 2, temp = 3, do = 4) |> #renames cols to simpler names
+    rename(date = 2, temp_C = 3, do_mg_L = 4) |> #renames cols to simpler names
     mutate(date = mdy_hms(date))|>
     mutate(date = round_date(date, unit = "5 minute")) |> # transforms all times to the nearest 5 mins
     filter(minute(date) %in% c(0, 15, 30, 45)) #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
@@ -67,6 +67,14 @@ for (i in seq_along(do_data)) {   # Make a for loop to make a plots for all data
 plot_names <- paste0 ("plots/", names(do_data)[i], ".png") #make the plot names an object
 
 ggsave(plot_names, plot = p,  path = local) #saves plots to local folder
+}
+
+##Save slightly cleaned files
+for(i in seq_along(nrow(do_data))) {
+  write_csv(
+    do_data$df[[i]],
+    file.path(local, paste0(do_data$name[i], ".csv"))
+  )
 }
 
 #### upload plots to GoogleDrive from local folder ####
