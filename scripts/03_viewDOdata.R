@@ -37,7 +37,7 @@ for (i in seq_along(ls_raw$name)) {  #create for loop for tibble
   )
 }
 
-#### Add data to R and do a minor clean and save ####
+#### Add data to R and do a minor clean ####
 #upload all data from local 03_raw_MX801 folder
 do_list<- list.files(path = local, full.names = TRUE, pattern = ".csv") #turns into a list
 do_data <- do_list %>% 
@@ -55,11 +55,16 @@ clean_do<- function(df) {
 
 do_data <- map(do_data, clean_do) #applies the function we just made to all my data listed
 
+###Combine data and view and save new dataframe ###
+combined_do_data <- do_data %>% 
+  bind_rows (.id = "site") %>%
+  mutate(site = str_extract(site, "[^_]+$")) #take the well id out by the name
 
-#save files with new col names (needed for next coding step)
-setwd("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/renamed_cols")
-iwalk(do_data, ~write_csv (.x, paste0(.y, ".csv")))
-
+ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
+  geom_line() +
+  facet_wrap(~site) +
+  theme_bw()+
+  theme(legend.position = "none")
 
 #### generate and save plots to local drive ###
 for (i in seq_along(do_data)) {   # Make a for loop to make a plots for all data files
