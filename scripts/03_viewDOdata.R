@@ -57,8 +57,8 @@ do_data <- map(do_data, clean_do) #applies the function we just made to all my d
 
 
 #save files with new col names (needed for next coding step)
-setwd("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801")
-iwalk(do_data, write_csv)
+setwd("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/renamed_cols")
+iwalk(do_data, ~write_csv (.x, paste0(.y, ".csv")))
 
 
 #### generate and save plots to local drive ###
