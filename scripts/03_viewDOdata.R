@@ -55,7 +55,7 @@ clean_do<- function(df) {
 
 do_data <- map(do_data, clean_do) #applies the function we just made to all my data listed
 
-###Combine data and view and save new dataframe ###
+####Combine data and view and save new dataframe ####
 combined_do_data <- do_data %>% 
   bind_rows (.id = "site") %>%
   mutate(site = str_extract(site, "[^_]+$")) #take the well id out by the name
@@ -65,6 +65,8 @@ ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by s
   facet_wrap(~site) +
   theme_bw()+
   theme(legend.position = "none")
+
+write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/do_raw_combined.csv")
 
 #### generate and save plots to local drive ###
 for (i in seq_along(do_data)) {   # Make a for loop to make a plots for all data files
