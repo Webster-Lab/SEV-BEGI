@@ -37,10 +37,12 @@ for (i in seq_along(ls_raw$name)) {  #create for loop for tibble
   )
 }
 
-#### Add data to R and do a minor clean ####
+#### Add data to R and do a minor clean and save ####
 #upload all data from local 03_raw_MX801 folder
 do_list<- list.files(path = local, full.names = TRUE, pattern = ".csv") #turns into a list
-do_data <- lapply(do_list, read_csv) #read all files into R
+do_data <- do_list %>% 
+  set_names(~sub("\\.csv$", "", basename(.))) %>% #sets name to original files
+  map(read_csv) #reads in files to our environment
 
 #creates a function that I can run on all my files listed
 clean_do<- function(df) { 
@@ -51,8 +53,13 @@ clean_do<- function(df) {
     filter(minute(date) %in% c(0, 15, 30, 45)) #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
 }
 
-do_data <- lapply(do_data, clean_do) #applies the function we just made to all my data listed
-names(do_data) <- sub("\\.csv$", "", basename(do_list)) #renames files to original files names
+do_data <- map(do_data, clean_do) #applies the function we just made to all my data listed
+
+
+#save files with new col names (needed for next coding step)
+setwd("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801")
+iwalk(do_data, write_csv)
+
 
 #### generate and save plots to local drive ###
 for (i in seq_along(do_data)) {   # Make a for loop to make a plots for all data files
@@ -69,13 +76,6 @@ plot_names <- paste0 ("plots/", names(do_data)[i], ".png") #make the plot names 
 ggsave(plot_names, plot = p,  path = local) #saves plots to local folder
 }
 
-##Save slightly cleaned files
-for(i in seq_along(nrow(do_data))) {
-  write_csv(
-    do_data$df[[i]],
-    file.path(local, paste0(do_data$name[i], ".csv"))
-  )
-}
 
 #### upload plots to GoogleDrive from local folder ####
 local_plots <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots" #makes object out of local plot folder
