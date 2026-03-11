@@ -58,11 +58,12 @@ do_data <- map(do_data, clean_do) #applies the function we just made to all my d
 ####Combine data and view and save new dataframe ####
 combined_do_data <- do_data %>% 
   bind_rows (.id = "site") %>%
-  mutate(site = str_extract(site, "[^_]+$")) #take the well id out by the name
+  mutate(well = str_extract(site, "[^_]+$")) %>% #take the well id out by the name
+  mutate(site = str_sub(well, 1, -2)) #take site id out of well id
 
 ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
   geom_line() +
-  facet_wrap(~site) +
+  facet_wrap(~well) +
   theme_bw()+
   theme(legend.position = "none")
 
