@@ -33,9 +33,17 @@ do_data <- map(do_data, clean_do) #applies the function we just made to all my d
 ####Combine all dataframes so we can look at it ###
 do_data <- do_data %>% 
   bind_rows (.id = "site") %>%
-  mutate(site = str_extract(site, "[^_]+$"))
+  mutate(site = str_extract(site, "[^_]+$")) #take the well id out by the name
 
-ggplot (do_data, aes(date, do_mg_L, color = site)) + 
-  geom_line()
+ggplot (do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
+  geom_line() +
+  facet_wrap(~site) +
+  theme_bw()+
+  theme(legend.position = "none")
 
 
+#### clean up before pushing to github ####
+rm(list = ls()) #removing all things from the environment 
+
+
+# now commit your changes and and push them to github!!
