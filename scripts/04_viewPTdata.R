@@ -79,17 +79,28 @@ clean_pt<- function(df) {
 air_data <- lapply(air_data, clean_pt) #applies the function we just made to all my data listed
 water_data <- lapply(water_data, clean_pt)
 
-combined_water_data <- water_data %>% 
+combined_water_data <- water_data %>% #combine data
   bind_rows (.id = "site") %>%
   mutate(well = str_extract(site, "[^_]+$"), #take the well id out by the name
   site = str_sub(well, 1, -2)) #take site id out of well id
 
-combined_air_data <- air_data %>% 
+combined_air_data <- air_data %>% #combine data
   bind_rows (.id = "site") %>%
   mutate(well = str_extract(site, "[^_]+$"), #take the well id out by the name
          site = str_extract(site, "(?<=_)[^_]+(?=_[^_]+$)"))
 
-####
+#### Plot out the raw data ####
+
+#plot it all
+ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
+  geom_line(data = combined_water_data)+
+  geom_line(data = combined_air_data, aes(date, pressure_Kpa))+
+  facet_wrap(~site)+
+  theme_bw()+
+  theme(legend.position = "none")
+
+#plot by site 
+
 
 #### generate and save plots to local drive ####
 for (i in seq_along(pt_data)) {   # Make a for loop to make a plots for all data files
