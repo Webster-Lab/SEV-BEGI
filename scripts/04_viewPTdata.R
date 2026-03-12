@@ -30,10 +30,10 @@ ls_air <- drive_ls(raw_air, pattern = ".csv")
 #tell R where I would like to save these files, save it to where ever you keep files locally
 local_air <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/raw_air_PT"
 
-for (i in seq_along(ls_air$name)) {  #create for loop for tibble 
+for (a in seq_along(ls_air$name)) {  #create for loop for tibble 
   drive_download( #use googledrive package to download data
-    as_id(ls_air$id[[i]]), #name the folders as their names
-    path = file.path(raw_air, ls_air$name[[i]]), #save it into local drive
+    as_id(ls_air$id[[a]]), #name the folders as their names
+    path = file.path(local_air, ls_air$name[[a]]), #save it into local drive
     overwrite = TRUE #overwrite anything in there
   )
 }
@@ -48,32 +48,50 @@ ls_water <- drive_ls(raw_water, pattern = ".csv")
 #tell R where I would like to save these files, save it to where ever you keep files locally
 local_water <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/raw_water_PT"
 
-for (i in seq_along(ls_water$name)) {  #create for loop for tibble 
+for (w in seq_along(ls_water$name)) {  #create for loop for tibble 
   drive_download( #use googledrive package to download data
-    as_id(ls_water$id[[i]]), #name the folders as their names
-    path = file.path(local, ls_water$name[[i]]), #save it into local drive
+    as_id(ls_water$id[[w]]), #name the folders as their names
+    path = file.path(local_water, ls_water$name[[w]]), #save it into local drive
     overwrite = TRUE #overwrite anything in there
   )
 }
 
 #### Add data to R and do a minor clean ####
-#upload all data from local 03_raw_MX801 folder
-pt_list<- list.files(path = local, full.names = TRUE, pattern = ".csv") #turns into a list
-pt_data <- lapply(pt_list, read_csv) #read all files into R
+#upload all data from local PT folders
+air_list<- list.files(path = local_air, full.names = TRUE, pattern = ".csv") #turns into a list
+air_data <- lapply(air_list, read_csv) #read all files into R
+
+water_list<- list.files(path = local_water, full.names = TRUE, pattern = ".csv") #turns into a list
+water_data <- lapply(water_list, read_csv) #read all files into R
 
 #creates a function that I can run on all my files listed
+names(air_data) <- sub("\\.csv$", "", basename(air_list)) #renames files to original files names
+names(water_data) <- sub("\\.csv$", "", basename(water_list))
+
 clean_pt<- function(df) { 
   df |>
-    rename(date = 2, pressure = 3, temp = 4) |> #renames cols to simpler names
-    mutate(date = mdy_hms(date))|>
+    rename(date = 2, pressure_Kpa = 3, temp_C = 4) |> #renames cols to simpler names
+    mutate(date = mdy_hms(date))|> #makes it POSTX format
     mutate(date = round_date(date, unit = "5 minute")) |> # transforms all times to the nearest 5 mins
     filter(minute(date) %in% c(0, 15, 30, 45)) #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
 }
 
-pt_data <- lapply(pt_data, clean_pt) #applies the function we just made to all my data listed
-names(pt_data) <- sub("\\.csv$", "", basename(pt_list)) #renames files to original files names
+air_data <- lapply(air_data, clean_pt) #applies the function we just made to all my data listed
+water_data <- lapply(water_data, clean_pt)
 
-#### generate and save plots to local drive ###
+combined_water_data <- water_data %>% 
+  bind_rows (.id = "site") %>%
+  mutate(well = str_extract(site, "[^_]+$"), #take the well id out by the name
+  site = str_sub(well, 1, -2)) #take site id out of well id
+
+combined_air_data <- air_data %>% 
+  bind_rows (.id = "site") %>%
+  mutate(well = str_extract(site, "[^_]+$"), #take the well id out by the name
+         site = str_extract(site, "(?<=_)[^_]+(?=_[^_]+$)"))
+
+####
+
+#### generate and save plots to local drive ####
 for (i in seq_along(pt_data)) {   # Make a for loop to make a plots for all data files
   p <- ggplot(pt_data[[i]], aes(date, pressure)) + #plot by time and do
     geom_line() +
