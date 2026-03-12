@@ -20,11 +20,11 @@ do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/B
 dist <- drive_get ("https://docs.google.com/spreadsheets/d/1T3NfyaLZTzo4YIrDL2GRKJr_MzR5IzlW/edit?gid=1054504098#gid=1054504098")
 drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.xlsx", overwrite = TRUE)
 
-## STOP, go and save that file as a csv manually!!!!!
+## STOP, go and save that file as a csv manually!!!!! (until I add script here lol)
 
 w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.csv")
 
-#clean up disturbance data
+#clean up disturbance data (need to finalize this)
 w_visits <- w_visits |> #webster visits
   rename(date = 1, site = location, well = Position) |>
   select(1:7) |>
@@ -33,7 +33,7 @@ w_visits <- w_visits |> #webster visits
          !site %in% c("HARR", "CRAW")) |>
   mutate(well = paste(site, well, sep = ""), date = ymd_hms(paste(date, time)))
   
-
+#plot data together by well
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line(linewidth = 2) +
   facet_wrap(~well) +
@@ -45,7 +45,7 @@ ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   theme_bw()+
   theme(legend.position = "none")
 
-#select out data by site
+#select out data by site (need to make this a loop or purrr)
 raw_ALAM <- filter(do_data, site == "ALAM")
 ALAM_v <- filter(w_visits, site == "ALAM")
 
