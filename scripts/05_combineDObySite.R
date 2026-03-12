@@ -28,24 +28,41 @@ w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM
 w_visits <- w_visits |> #webster visits
   rename(date = 1, site = location, well = Position) |>
   select(1:7) |>
-  filter(date >= as.Date('2025-10-01 00:00:00'), 
-         observation == "removed", 
-         !site %in% c("HARR", "CRAW")) |>
-  mutate(well = paste(site, well, sep = ""), date = ymd_hms(paste(date, time)))
+  filter(date >= as.Date('2025-10-01 00:00:00'),
+         model == "MX801-DO",
+         observation == c("removed", "deployed"),
+         !site %in% c("HARR", "CRAW", "SEV")) |>
+  mutate(well = paste(site, well, sep = ""), 
+         date = ymd_hms(paste(date, time)))
   
 #plot data together by well
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line(linewidth = 2) +
   facet_wrap(~well) +
   geom_vline(data = w_visits, 
-             aes(xintercept = date), 
-             color = "red", 
+             aes(xintercept = date, color = observation), 
              linetype = "dashed", 
              alpha = 0.8)+
   theme_bw()+
   theme(legend.position = "none")
 
-#select out data by site (need to make this a loop or purrr)
+#select out data by site
+sites <- c("ALAM", "MINN", "RGNC", "SLO") 
+
+plot_by_site <- function (site_id) {
+   raw <- filter(do_data, site == site_id) 
+   visits <- filter(w_visits, site == site_id) 
+   
+   ggplot(raw, aes(date, do_mg_L, color = well)) +
+     geom_line(linewidth = 2) + facet_wrap(~well) + 
+     geom_vline(data = visits, aes(xintercept = date), 
+                color = "red", linetype = "dashed", alpha = 0.8) + 
+     theme_bw() + 
+     theme(legend.position = "none") } 
+
+lapply(sites, plot_by_site) 
+
+
 raw_ALAM <- filter(do_data, site == "ALAM")
 ALAM_v <- filter(w_visits, site == "ALAM")
 
