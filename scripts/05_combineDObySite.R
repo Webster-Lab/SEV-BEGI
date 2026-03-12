@@ -19,23 +19,73 @@ do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/B
 ### Download disturbance data ###
 dist <- drive_get ("https://docs.google.com/spreadsheets/d/1T3NfyaLZTzo4YIrDL2GRKJr_MzR5IzlW/edit?gid=1054504098#gid=1054504098")
 drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.xlsx", overwrite = TRUE)
+
+## STOP, go and save that file as a csv manually!!!!!
+
 w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.csv")
 
-#clean up distubance data
-w_visits <- w_visits |>
-  rename(date = 1) |>
+#clean up disturbance data
+w_visits <- w_visits |> #webster visits
+  rename(date = 1, site = location, well = Position) |>
   select(1:7) |>
-  unite(well, 5, 6, sep = "") |>
-  mutate(date = ymd_hms(paste(date, time))) |>
-  filter(date >= as.Date('2025-10-01 00:00:00')) |>
-  filter(observation == "removed")
+  filter(date >= as.Date('2025-10-01 00:00:00'), 
+         observation == "removed", 
+         !site %in% c("HARR", "CRAW")) |>
+  mutate(well = paste(site, well, sep = ""), date = ymd_hms(paste(date, time)))
+  
 
-ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
-  geom_line() +
+ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
+  geom_line(linewidth = 2) +
   facet_wrap(~well) +
-  geom_vline(data = w_visits, aes(xintercept = date, linetype = "dotted"))+
+  geom_vline(data = w_visits, 
+             aes(xintercept = date), 
+             color = "red", 
+             linetype = "dashed", 
+             alpha = 0.8)+
   theme_bw()+
   theme(legend.position = "none")
+
+#select out data by site
+raw_ALAM <- filter(do_data, site == "ALAM")
+ALAM_v <- filter(w_visits, site == "ALAM")
+
+ggplot (raw_ALAM, aes(date, do_mg_L, color = well)) + # view raw do by site
+  geom_line(linewidth = 2) +
+  facet_wrap(~well) +
+  geom_vline(data = ALAM_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
+  theme_bw()+
+  theme(legend.position = "none")
+
+raw_MINN <- filter(do_data, site == "MINN")
+MINN_v <- filter(w_visits, site == "MINN")
+
+ggplot (raw_MINN, aes(date, do_mg_L, color = well)) + # view raw do by site
+  geom_line(linewidth = 2) +
+  facet_wrap(~well) +
+  geom_vline(data = MINN_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
+  theme_bw()+
+  theme(legend.position = "none")
+
+raw_RGNC <- filter(do_data, site == "RGNC")
+RGNC_v <- filter(w_visits, site == "RGNC")
+
+ggplot (raw_RGNC, aes(date, do_mg_L, color = well)) + # view raw do by site
+  geom_line(linewidth = 2) +
+  facet_wrap(~well) +
+  geom_vline(data = RGNC_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
+  theme_bw()+
+  theme(legend.position = "none")
+
+raw_SLO <- filter(do_data, site == "SLO")
+SLO_v <- filter(w_visits, site == "SLO")
+
+ggplot (raw_SLO, aes(date, do_mg_L, color = well)) + # view raw do by site
+  geom_line(linewidth = 2) +
+  facet_wrap(~well) +
+  geom_vline(data = SLO_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
+  theme_bw()+
+  theme(legend.position = "none")
+
 
 #### clean up before pushing to github ####
 rm(list = ls()) #removing all things from the environment 
