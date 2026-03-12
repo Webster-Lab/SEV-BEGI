@@ -72,7 +72,7 @@ ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by s
 write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/do_raw_combined.csv")
 
 
-#### generate and save plots to local drive ###
+#### generate and save plots to local drive ####
 for (i in seq_along(do_data)) {   # Make a for loop to make a plots for all data files
   p <- ggplot(do_data[[i]], aes(date, do)) + #plot by time and do
     geom_line() +
