@@ -12,26 +12,46 @@ library(googledrive) #so we can interface with Google files
 library(tidyverse) #so we can a small amount of data transformation
 library(lubridate) #so we can change transform date-time data
 
-#### load data from google drive #### potentially delete this
+#### load data from google drive ####
 drive_auth() # log in to google from R
 
 #choose 2 for authentication
 2 
 
 #### Download files into local folder ####
-#define the google drive folder
-raw_pt_folder <- "https://drive.google.com/drive/folders/1kBgaLh-fAJ2CVbO66JfrLg9muatqQ2jh?usp=drive_link"
 
-# make list of csv files only from "0_raw_MX801_csv" folder
-ls_raw <- drive_ls(raw_pt_folder, pattern = ".csv")
+## Water PT ##
+#define the google drive folder
+raw_air <- "https://drive.google.com/drive/folders/1b2so7b-buPsGlyic_Fup3j_m39zUYmnS?usp=drive_link"
+
+# make list of csv files only from "Air PTs" folder
+ls_air <- drive_ls(raw_air, pattern = ".csv")
 
 #tell R where I would like to save these files, save it to where ever you keep files locally
-local <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT"
+local_air <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/raw_air_PT"
 
-for (i in seq_along(ls_raw$name)) {  #create for loop for tibble 
+for (i in seq_along(ls_air$name)) {  #create for loop for tibble 
   drive_download( #use googledrive package to download data
-    as_id(ls_raw$id[[i]]), #name the folders as their names
-    path = file.path(local, ls_raw$name[[i]]), #save it into local drive
+    as_id(ls_air$id[[i]]), #name the folders as their names
+    path = file.path(raw_air, ls_air$name[[i]]), #save it into local drive
+    overwrite = TRUE #overwrite anything in there
+  )
+}
+
+## Water PT ##
+#define the google drive folder
+raw_water <- "https://drive.google.com/drive/folders/1kBgaLh-fAJ2CVbO66JfrLg9muatqQ2jh?usp=drive_link"
+
+# make list of csv files only from "0_raw_MX801_csv" folder
+ls_water <- drive_ls(raw_water, pattern = ".csv")
+
+#tell R where I would like to save these files, save it to where ever you keep files locally
+local_water <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/raw_water_PT"
+
+for (i in seq_along(ls_water$name)) {  #create for loop for tibble 
+  drive_download( #use googledrive package to download data
+    as_id(ls_water$id[[i]]), #name the folders as their names
+    path = file.path(local, ls_water$name[[i]]), #save it into local drive
     overwrite = TRUE #overwrite anything in there
   )
 }
