@@ -95,11 +95,10 @@ combined_air_data <- air_data %>% #combine data
 ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
   geom_line(data = combined_water_data)+
   geom_line(data = combined_air_data, aes(date, pressure_Kpa))+
-  facet_wrap(~site)+
+  facet_wrap(~well)+
   theme_bw()+
   theme(legend.position = "none")
 
-#plot by site 
 
 
 #### generate and save plots to local drive ####
