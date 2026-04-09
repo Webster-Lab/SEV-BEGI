@@ -20,7 +20,7 @@ drive_auth() # log in to google from R
 
 #### Download files into local folder ####
 
-## Water PT ##
+## Air PT ##
 #define the google drive folder
 raw_air <- "https://drive.google.com/drive/folders/1b2so7b-buPsGlyic_Fup3j_m39zUYmnS?usp=drive_link"
 
@@ -42,7 +42,7 @@ for (a in seq_along(ls_air$name)) {  #create for loop for tibble
 #define the google drive folder
 raw_water <- "https://drive.google.com/drive/folders/1kBgaLh-fAJ2CVbO66JfrLg9muatqQ2jh?usp=drive_link"
 
-# make list of csv files only from "0_raw_MX801_csv" folder
+# make list of csv files only from "HOBO PTs" folder
 ls_water <- drive_ls(raw_water, pattern = ".csv")
 
 #tell R where I would like to save these files, save it to where ever you keep files locally
@@ -87,35 +87,36 @@ combined_water_data <- water_data %>% #combine data
 combined_air_data <- air_data %>% #combine data
   bind_rows (.id = "site") %>%
   mutate(well = str_extract(site, "[^_]+$"), #take the well id out by the name
-         site = str_extract(site, "(?<=_)[^_]+(?=_[^_]+$)"))
+         site = str_extract(site, "(?<=_)[^_]+(?=_[^_]+$)")) |>
+  rename(air_Kpa = 4)
 
 #### Plot out the raw data ####
 
 #plot it all
 ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
   geom_line(data = combined_water_data)+
-  geom_line(data = combined_air_data, aes(date, pressure_Kpa))+
+  geom_line(data = combined_air_data, aes(date, air_Kpa))+
   facet_wrap(~well)+
   theme_bw()+
   theme(legend.position = "none")
 
+#### correct PTs in groundwater to air PT readings --will need to update this method in the future ####
+# add air Pt data into water Pt data and subrct for corrected values
+PT_data<- left_join(combined_water_data,
+                  combined_air_data |> select (date, air_Kpa), 
+                  by = "date", relationship = "many-to-many")
+PT_data <- mutate(PT_data, Kpa_corr = pressure_Kpa - air_Kpa)
+
+## Air PT ##
+#define the google drive folder
+beep <- "https://docs.google.com/spreadsheets/d/1wAyqjw8EDlK7sixdEHA1VMoKdQktFVlE/edit?usp=sharing&ouid=107567537261813068113&rtpof=true&sd=true"
+
+#tell R where I would like to save these files, save it to where ever you keep files locally
+local <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT"
+
+drive_download(beep, path = local, overwrite = T)
 
 
-#### generate and save plots to local drive ####
-for (i in seq_along(pt_data)) {   # Make a for loop to make a plots for all data files
-  p <- ggplot(pt_data[[i]], aes(date, pressure)) + #plot by time and do
-    geom_line() +
-    labs(y = "Pressure (kPa)",
-         x= "Date",
-         title = names(pt_data)[i]) +
-    theme_minimal()
-  print(p)
-  
-  plot_names <- paste0 ("plots/", names(pt_data)[i], ".png") #make the plot names an object
-  
-  ggsave(plot_names, plot = p,  path = local) #saves plots to local folder
-  
-}
 
 #### clean up before pushing to github ####
 rm(list = ls()) #removing all things from the environment 
