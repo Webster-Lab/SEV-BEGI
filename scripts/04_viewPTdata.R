@@ -101,20 +101,33 @@ ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
   theme(legend.position = "none")
 
 #### correct PTs in groundwater to air PT readings --will need to update this method in the future ####
-# add air Pt data into water Pt data and subrct for corrected values
+# add air Pt data into water Pt data and subtract for corrected values
 PT_data<- left_join(combined_water_data,
                   combined_air_data |> select (date, air_Kpa), 
                   by = "date", relationship = "many-to-many")
 PT_data <- mutate(PT_data, Kpa_corr = pressure_Kpa - air_Kpa)
 
-## Air PT ##
-#define the google drive folder
-beep <- "https://docs.google.com/spreadsheets/d/1wAyqjw8EDlK7sixdEHA1VMoKdQktFVlE/edit?usp=sharing&ouid=107567537261813068113&rtpof=true&sd=true"
+#### transform kpa to ground water depth ####
+beep <- drive_get ("https://docs.google.com/spreadsheets/d/1wAyqjw8EDlK7sixdEHA1VMoKdQktFVlE/edit?usp=sharing&ouid=107567537261813068113&rtpof=true&sd=true8")
+drive_download(beep, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/beeper_data.xlsx", overwrite = TRUE)
 
-#tell R where I would like to save these files, save it to where ever you keep files locally
-local <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT"
+## need to manually save as csv file
 
-drive_download(beep, path = local, overwrite = T)
+beeper_data <- read.csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/beeper_data.csv")
+
+beeper_data <- beeper_data |>
+  mutate(date = ymd(date))
+
+avg_kpa <- PT_data |>
+  group_by(date, well)|>
+  summarise(pressure_mean = mean(pressure_Kpa))
+
+avg_kpa <- left_join
+
+ggplot()+
+  geom_point(PT_data, aes(date, kpa))+
+  geom_point(beeper_data, aes(date, surface))+
+  facet_wrap(~site)
 
 
 
