@@ -56,7 +56,12 @@ for (w in seq_along(ls_water$name)) {  #create for loop for tibble
   )
 }
 
-#### Add data to R and do a minor clean ####
+#### Add data to R ####
+
+#define local folders again/or if you start here
+local_air <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/raw_air_PT"
+local_water <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/raw_water_PT"
+
 #upload all data from local PT folders
 air_list<- list.files(path = local_air, full.names = TRUE, pattern = ".csv") #turns into a list
 air_data <- lapply(air_list, read_csv) #read all files into R
@@ -68,6 +73,9 @@ water_data <- lapply(water_list, read_csv) #read all files into R
 names(air_data) <- sub("\\.csv$", "", basename(air_list)) #renames files to original files names
 names(water_data) <- sub("\\.csv$", "", basename(water_list))
 
+#Note any overarching edits that need to be made (might add code about download meta data here)
+
+#### Clean up a little ####
 clean_pt<- function(df) { 
   df |>
     rename(date = 2, pressure_Kpa = 3, temp_C = 4) |> #renames cols to simpler names
@@ -90,22 +98,34 @@ combined_air_data <- air_data %>% #combine data
          site = str_extract(site, "(?<=_)[^_]+(?=_[^_]+$)")) |>
   rename(air_Kpa = 4)
 
-#### Plot out the raw data ####
-
-#plot it all
-ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
+#view it 
+raw_kpa <- ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
   geom_line(data = combined_water_data)+
   geom_line(data = combined_air_data, aes(date, air_Kpa))+
   facet_wrap(~well)+
   theme_bw()+
   theme(legend.position = "none")
 
-#### correct PTs in groundwater to air PT readings --will need to update this method in the future ####
-# add air Pt data into water Pt data and subtract for corrected values
-PT_data<- left_join(combined_water_data,
+ggsave("raw_kpa.png", path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT")
+
+#### Correct PTs in groundwater to air PT readings ####
+
+# add air Pt data into water Pt data and subtract for corrected values (when we add more air PTs we will need to change this code to be more specific)
+PT_data<- left_join(combined_water_data, #join air and water PT by dates
                   combined_air_data |> select (date, air_Kpa), 
                   by = "date", relationship = "many-to-many")
-PT_data <- mutate(PT_data, Kpa_corr = pressure_Kpa - air_Kpa)
+
+PT_data <- mutate(PT_data, Kpa_corr = pressure_Kpa - air_Kpa) #add a col with corrected pressure data
+
+GW_Kpa <- ggplot(PT_data, aes(date, Kpa_corr, color = well))+ #veiw the data 
+  geom_line()+
+  facet_wrap(~well)+
+  theme_bw()
+
+ggsave("Groundwater_Kpa_corrected.png", path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT") #save the plot into the data folder
+
+write_csv(PT_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/corrected_Kpa_PT.csv")
+
 
 #### transform kpa to ground water depth ####
 beep <- drive_get ("https://docs.google.com/spreadsheets/d/1wAyqjw8EDlK7sixdEHA1VMoKdQktFVlE/edit?usp=sharing&ouid=107567537261813068113&rtpof=true&sd=true8")
@@ -116,7 +136,9 @@ drive_download(beep, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexi
 beeper_data <- read.csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/beeper_data.csv")
 
 beeper_data <- beeper_data |>
-  mutate(date = ymd(date))
+  unite(date, 1, 2, sep = " ") |>
+  mutate(date = mdy_hms(date))|> #makes it POSTX format
+  mutate(date = round_date(date, unit = "5 minute")) |> # transforms all times to the
 
 avg_kpa <- PT_data |>
   group_by(date, well)|>
