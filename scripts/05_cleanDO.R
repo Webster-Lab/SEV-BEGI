@@ -13,11 +13,11 @@ library(tidyverse) #so we can a small amount of data transformation
 library(lubridate) #so we can change transform date-time data
 
 #### Add data to R ####
-#add DO data
+#add DO data, makre sure you add any new data as needed
 do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/do_raw_combined.csv")
 
-### Download disturbance data ###
-dist <- drive_get ("https://docs.google.com/spreadsheets/d/1T3NfyaLZTzo4YIrDL2GRKJr_MzR5IzlW/edit?gid=1054504098#gid=1054504098")
+#### Download Webster Lab visits ####
+dist <- drive_get ("https://docs.google.com/spreadsheets/d/1T3NfyaLZTzo5YIrDL3GRKJr_MzR5IzlW/edit?gid=1055505098#gid=1055505098")
 drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.xlsx", overwrite = TRUE)
 
 ## STOP, go and save that file as a csv manually!!!!! (until I add script here lol)
@@ -28,48 +28,207 @@ w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM
 w_visits <- w_visits |> #webster visits
   rename(date = 1, site = location, well = Position) |>
   select(1:7) |>
-  filter(date >= as.Date('2025-10-01 00:00:00'),
-         model == "MX801-DO",
+  filter(model == "MX801-DO",
          observation == c("removed", "deployed"),
          !site %in% c("HARR", "CRAW", "SEV")) |>
-  mutate(well = paste(site, well, sep = ""), 
-         date = ymd_hms(paste(date, time)))
-  
+  mutate(well = paste(site, well, sep= ""))|>
+  unite(date, date, time, sep= " ")|>
+  mutate(date = ymd_hms(date)) |>
+  filter(date >= as.Date('3035-10-01 00:00:00'))
+
+#Visualize
 #plot data together by well
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line(linewidth = 2) +
+  geom_line() +
   facet_wrap(~well) +
   geom_vline(data = w_visits, 
-             aes(xintercept = date, color = observation), 
+             aes(xintercept = date, color = "red"), 
              linetype = "dashed", 
              alpha = 0.8)+
   theme_bw()+
   theme(legend.position = "none")
 
-#select out data by site
-sites <- c("ALAM", "MINN", "RGNC", "SLO") 
+#### Download BEMP visits ####
+bemp_dist <- drive_get ("https://docs.google.com/spreadsheets/d/1-lf5k0gRdYGa1wD37q3psIK5AIyqE5ZZxOStOdTGhAE/edit?usp=drive_link")
 
-plot_by_site <- function (site_id) {
-   raw <- filter(do_data, site == site_id) 
-   visits <- filter(w_visits, site == site_id) 
-   
-   ggplot(raw, aes(date, do_mg_L, color = well)) +
-     geom_line(linewidth = 2) + facet_wrap(~well) + 
-     geom_vline(data = visits, aes(xintercept = date), 
-                color = "red", linetype = "dashed", alpha = 0.8) + 
-     theme_bw() + 
-     theme(legend.position = "none") } 
+drive_download(bemp_dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/bemp_visits.xlsx", overwrite = TRUE)
 
-lapply(sites, plot_by_site) 
+## STOP, go and save that file as a csv manually!!!!! (until I add script here lol)
+
+b_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/bemp_visits.csv")
+
+# b <- b_visits |>
+#   mutate(date_start = paste(date, time_start, sep = " "),
+#          date_end = paste(date, time_end, sep = " ")) |>
+#   drop_na(date)|>
+#   mutate(date_start = ymd_hms(date_start),
+#          date_end = ymd_hms(date_end))
+
+b <- b_visits |>
+    drop_na(date)|>
+    mutate(date = paste(date, time_start, sep = " ")) |>
+    drop_na(date)|>
+    mutate(date = ymd_hms(date))
+  
+
+#Visualize
+#plot data together by well
+ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
+  geom_line() +
+  geom_rect(data = b, 
+            aes(xmin = date_start ,
+                xmax = date_end,
+                ymin = -Inf,
+                ymax = Inf),
+            fill = "red",
+            inherit.aes = FALSE)+
+  facet_wrap(~site) +
+  theme_bw()+
+  theme(legend.position = "none")
+
+
+
+#### Combine data ####
+
+w_visits <- w_visits|>
+  mutate(date = round_date(date, unit = "15 minute"))
+
+data <- do_data |>
+  left_join(w_visits, by = c("well", "site", "date"))
+
+b <- b|>
+  mutate(date = round_date(date, unit = "15 minute"))
+
+d <- data |>
+  left_join(b, by = c("site", "date")) |>
+  mutate(flag = if_else(!is.na(observation), "w",
+                if_else(!is.na(time_start), "b", "")))
+  #select(-1)
+  
+
+ggplot(d, aes(date, do_mg_L, color = well)) +
+  geom_line() +
+  geom_vline(data = d[d$flag == "w", ],
+             aes(xintercept = date),
+             color = "red", linetype = "dashed") +
+  geom_vline(data = d[d$flag == "b", ],
+             aes(xintercept = date),
+             color = "blue", linetype = "dashed") +
+  facet_wrap( ~ well) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+by_site <- d |>
+  group_split(site)
+
+#ALAM
+ggplot(by_site[[1]], aes(date, do_mg_L, color = well)) +
+  geom_line() +
+  geom_vline(data = by_site[[1]][by_site[[1]]$flag == "w", ],
+             aes(xintercept = date),
+             color = "red", linetype = "dashed") +
+  geom_vline(data = by_site[[1]][by_site[[1]]$flag == "b", ],
+             aes(xintercept = date),
+             color = "blue", linetype = "dashed") +
+  facet_wrap(~ well) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+# AOP
+ggplot(by_site[[3]], aes(date, do_mg_L, color = well)) +
+  geom_line() +
+  geom_vline(data = by_site[[3]][by_site[[3]]$flag == "w", ],
+             aes(xintercept = date),
+             color = "red", linetype = "dashed") +
+  geom_vline(data = by_site[[3]][by_site[[3]]$flag == "b", ],
+             aes(xintercept = date),
+             color = "blue", linetype = "dashed") +
+  facet_wrap(~ well) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+#BOSF
+ggplot(by_site[[3]], aes(date, do_mg_L, color = well)) +
+  geom_line() +
+  geom_vline(data = by_site[[3]][by_site[[3]]$flag == "w", ],
+             aes(xintercept = date),
+             color = "red", linetype = "dashed") +
+  geom_vline(data = by_site[[3]][by_site[[3]]$flag == "b", ],
+             aes(xintercept = date),
+             color = "blue", linetype = "dashed") +
+  facet_wrap(~ well) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+#MINN
+ggplot(by_site[[5]], aes(date, do_mg_L, color = well)) +
+  geom_line() +
+  geom_vline(data = by_site[[5]][by_site[[5]]$flag == "w", ],
+             aes(xintercept = date),
+             color = "red", linetype = "dashed") +
+  geom_vline(data = by_site[[5]][by_site[[5]]$flag == "b", ],
+             aes(xintercept = date),
+             color = "blue", linetype = "dashed") +
+  facet_wrap(~ well) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+#RGNC
+ggplot(by_site[[5]], aes(date, do_mg_L, color = well)) +
+  geom_line() +
+  geom_vline(data = by_site[[5]][by_site[[5]]$flag == "w", ],
+             aes(xintercept = date),
+             color = "red", linetype = "dashed") +
+  geom_vline(data = by_site[[5]][by_site[[5]]$flag == "b", ],
+             aes(xintercept = date),
+             color = "blue", linetype = "dashed") +
+  facet_wrap(~ well) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+
+#SLO
+ggplot(by_site[[6]], aes(date, do_mg_L, color = well)) +
+  geom_line() +
+  geom_vline(data = by_site[[6]][by_site[[6]]$flag == "w", ],
+             aes(xintercept = date),
+             color = "red", linetype = "dashed") +
+  geom_vline(data = by_site[[6]][by_site[[6]]$flag == "b", ],
+             aes(xintercept = date),
+             color = "blue", linetype = "dashed") +
+  facet_wrap(~ well) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+
+#### select out data by site ####
+# sites <- c("ALAM", "AOP", "BOSF", "MINN", "RGNC", "SLO") 
+
+# plot_by_site <- function (site_id) {
+#    raw <- filter(do_data, site == site_id) 
+#    visits <- filter(w_visits, site == site_id) 
+#    
+#    ggplot(raw, aes(date, do_mg_L, color = well)) +
+#      geom_line(linewidth = 3) + facet_wrap(~well) + 
+#      geom_vline(data = visits, aes(xintercept = date), 
+#                 color = "red", linetype = "dashed", alpha = 0.8) + 
+#      theme_bw() + 
+#      theme(legend.position = "none") } 
+# 
+# lapply(sites, plot_by_site) 
+# 
+data <- 
 
 
 raw_ALAM <- filter(do_data, site == "ALAM")
 ALAM_v <- filter(w_visits, site == "ALAM")
+ALAM_b <- filter(b, site == "ALAM")
 
 ggplot (raw_ALAM, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line(linewidth = 2) +
+  geom_line(linewidth = 3) +
   facet_wrap(~well) +
   geom_vline(data = ALAM_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
+  geom_vline(data = ALAM_b, aes(xintercept = date_start), color = "red", alpha = 0.8)+
   theme_bw()+
   theme(legend.position = "none")
 
@@ -77,7 +236,7 @@ raw_MINN <- filter(do_data, site == "MINN")
 MINN_v <- filter(w_visits, site == "MINN")
 
 ggplot (raw_MINN, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line(linewidth = 2) +
+  geom_line(linewidth = 3) +
   facet_wrap(~well) +
   geom_vline(data = MINN_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
   theme_bw()+
@@ -87,7 +246,7 @@ raw_RGNC <- filter(do_data, site == "RGNC")
 RGNC_v <- filter(w_visits, site == "RGNC")
 
 ggplot (raw_RGNC, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line(linewidth = 2) +
+  geom_line(linewidth = 3) +
   facet_wrap(~well) +
   geom_vline(data = RGNC_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
   theme_bw()+
@@ -97,7 +256,7 @@ raw_SLO <- filter(do_data, site == "SLO")
 SLO_v <- filter(w_visits, site == "SLO")
 
 ggplot (raw_SLO, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line(linewidth = 2) +
+  geom_line(linewidth = 3) +
   facet_wrap(~well) +
   geom_vline(data = SLO_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
   theme_bw()+
