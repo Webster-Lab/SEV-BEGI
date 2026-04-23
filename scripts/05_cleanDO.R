@@ -25,7 +25,7 @@ drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexi
 w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.csv")
 
 #clean up disturbance data (need to finalize this)
-w_visits <- w_visits |> #webster visits
+w <- w_visits |> #webster visits
   rename(date = 1, site = location, well = Position) |>
   select(1:7) |>
   filter(model == "MX801-DO",
@@ -34,13 +34,13 @@ w_visits <- w_visits |> #webster visits
   mutate(well = paste(site, well, sep= ""))|>
   unite(date, date, time, sep= " ")|>
   mutate(date = ymd_hms(date)) |>
-  filter(date >= as.Date('3035-10-01 00:00:00'))
+  filter(date >= as.Date('2025-10-01 00:00:00')) #remove any data before we started monitoring
 
 #Visualize
 #plot data together by well
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
-  facet_wrap(~well) +
+  #facet_wrap(~well) +
   geom_vline(data = w_visits, 
              aes(xintercept = date, color = "red"), 
              linetype = "dashed", 
@@ -75,13 +75,10 @@ b <- b_visits |>
 #plot data together by well
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
-  geom_rect(data = b, 
-            aes(xmin = date_start ,
-                xmax = date_end,
-                ymin = -Inf,
-                ymax = Inf),
-            fill = "red",
-            inherit.aes = FALSE)+
+  geom_vline(data = b, 
+             aes(xintercept = date, color = "red"), 
+             linetype = "dashed", 
+             alpha = 0.8)+
   facet_wrap(~site) +
   theme_bw()+
   theme(legend.position = "none")
@@ -89,11 +86,11 @@ ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
 
 #### Combine data ####
 
-w_visits <- w_visits|>
+w <- w |>
   mutate(date = round_date(date, unit = "15 minute"))
 
 data <- do_data |>
-  left_join(w_visits, by = c("well", "site", "date"))
+  left_join(w, by = c("well", "site", "date"))
 
 b <- b|>
   mutate(date = round_date(date, unit = "15 minute"))
@@ -101,10 +98,10 @@ b <- b|>
 d <- data |>
   left_join(b, by = c("site", "date")) |>
   mutate(flag = if_else(!is.na(observation), "w",
-                if_else(!is.na(time_start), "b", "")))
-  #select(-1)
+                if_else(!is.na(time_start), "b", ""))) |>
+  select(-2,-6, -8, -9, -10, -11, -12, -13)
   
-
+#veiw all together
 ggplot(d, aes(date, do_mg_L, color = well)) +
   geom_line() +
   geom_vline(data = d[d$flag == "w", ],
@@ -117,8 +114,9 @@ ggplot(d, aes(date, do_mg_L, color = well)) +
   theme_bw() +
   theme(legend.position = "none")
 
+##### Plot by site ####
 by_site <- d |>
-  group_split(site)
+  group_split(site) #make a list by site
 
 #ALAM
 ggplot(by_site[[1]], aes(date, do_mg_L, color = well)) +
@@ -199,6 +197,37 @@ ggplot(by_site[[6]], aes(date, do_mg_L, color = well)) +
   theme_bw() +
   theme(legend.position = "none")
 
+
+####temp kpa to do ###
+kpa <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/corrected_Kpa_PT.csv")
+
+ggplot() +
+  geom_line(data = d, aes(date, do_mg_L), color = "blue") +
+  geom_line(data = kpa, aes(date, Kpa_corr), color = "red") +
+  # geom_vline(data = d[d$flag == "w", ],
+  #            aes(xintercept = date),
+  #            color = "red", linetype = "dashed") +
+  # geom_vline(data = d[d$flag == "b", ],
+  #            aes(xintercept = date),
+  #            color = "blue", linetype = "dashed") +
+  facet_wrap( ~ well) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+scale_factor <- max(d$do_mg_L, na.rm = TRUE) / max(kpa$Kpa_corr, na.rm = TRUE)
+
+ggplot() +
+  geom_line(data = d, aes(date, do_mg_L), color = "blue") +
+  geom_line(data = kpa, aes(date, Kpa_corr * scale_factor), color = "red") +
+  
+  scale_y_continuous(
+    name = "DO (mg/L)",
+    sec.axis = sec_axis(~ . / scale_factor, name = "KPa")
+  ) +
+  
+  facet_wrap(~ well) +
+  theme_bw() +
+  theme(legend.position = "none")
 
 #### clean up before pushing to github ####
 rm(list = ls()) #removing all things from the environment 
