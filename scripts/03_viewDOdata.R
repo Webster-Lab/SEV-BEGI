@@ -21,7 +21,6 @@ drive_auth() # log in to google from R
 
 #### Download files into local folder ####
 
-### Download DO data ###
 #define the google drive folder
 raw_do_folder <- "https://drive.google.com/drive/folders/19KqRIbufpV_db2ONUmBIygI_6xK7JGXj?usp=drive_link" 
 
@@ -31,6 +30,7 @@ ls_raw <- drive_ls(raw_do_folder, pattern = ".csv")
 #tell R where I would like to save these files, save it to where ever you keep files locally
 local <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801"
 
+#might need to figure out a way to stop downloading each time, taking more and more time
 for (i in seq_along(ls_raw$name)) {  #create for loop for tibble 
   drive_download( #use googledrive package to download data
     as_id(ls_raw$id[[i]]), #name the folders as their names
@@ -45,6 +45,8 @@ do_list<- list.files(path = local, full.names = TRUE, pattern = ".csv") #turns i
 do_data <- do_list %>% 
   set_names(~sub("\\.csv$", "", basename(.))) %>% #sets name to original files
   map(read_csv) #reads in files to our environment
+
+#might add a way to save the meta data, need to note any obscurities 
 
 #creates a function that I can run on all my files listed
 clean_do<- function(df) { 
@@ -63,38 +65,41 @@ combined_do_data <- do_data %>%
   mutate(well = str_extract(site, "[^_]+$")) %>% #take the well id out by the name
   mutate(site = str_sub(well, 1, -2)) #take site id out of well id
 
-ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
+do_raw <- ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
   geom_line() +
   facet_wrap(~well) +
   theme_bw()+
   theme(legend.position = "none")
 
+ggsave("do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots")
+
 write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/do_raw_combined.csv")
 
 
 #### generate and save plots to local drive ####
-for (i in seq_along(do_data)) {   # Make a for loop to make a plots for all data files
-  p <- ggplot(do_data[[i]], aes(date, do)) + #plot by time and do
-    geom_line() +
-    labs(y = "Dissolved Oxygen mg/L",
-         x= "Date",
-         title = names(do_data)[i]) +
-    theme_minimal()
-  print(p)
-
-plot_names <- paste0 ("plots/", names(do_data)[i], ".png") #make the plot names an object
-
-ggsave(plot_names, plot = p,  path = local) #saves plots to local folder
-}
+#keeping for now but will eventually delete, keeping so I can maybe use later
+# for (i in seq_along(do_data)) {   # Make a for loop to make a plots for all data files
+#   p <- ggplot(do_data[[i]], aes(date, do)) + #plot by time and do
+#     geom_line() +
+#     labs(y = "Dissolved Oxygen mg/L",
+#          x= "Date",
+#          title = names(do_data)[i]) +
+#     theme_minimal()
+#   print(p)
+# 
+# plot_names <- paste0 ("plots/", names(do_data)[i], ".png") #make the plot names an object
+# 
+# ggsave(plot_names, plot = p,  path = local) #saves plots to local folder
+# }
 
 
 #### upload plots to GoogleDrive from local folder ####
-local_plots <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots" #makes object out of local plot folder
-plots_list <- list.files(path = local_plots, full.name = TRUE, pattern = ".png") #gets a list of all the files in that folder
-
-for (i in plots_list) { #tell it to upload plots to GoogleDrive
-  drive_upload(media = i, as_id("129YBdevfwctUWGH3aR-910ZFlam7VMqD", overwrite = TRUE))
-}
+# local_plots <- "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots" #makes object out of local plot folder
+# plots_list <- list.files(path = local_plots, full.name = TRUE, pattern = ".png") #gets a list of all the files in that folder
+# 
+# for (i in plots_list) { #tell it to upload plots to GoogleDrive
+#   drive_upload(media = i, as_id("129YBdevfwctUWGH3aR-910ZFlam7VMqD", overwrite = TRUE))
+# }
 
 #### clean up before pushing to github ####
 rm(list = ls()) #removing all things from the environment 
