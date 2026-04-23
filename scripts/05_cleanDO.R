@@ -87,7 +87,6 @@ ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   theme(legend.position = "none")
 
 
-
 #### Combine data ####
 
 w_visits <- w_visits|>
@@ -198,68 +197,6 @@ ggplot(by_site[[6]], aes(date, do_mg_L, color = well)) +
              color = "blue", linetype = "dashed") +
   facet_wrap(~ well) +
   theme_bw() +
-  theme(legend.position = "none")
-
-
-#### select out data by site ####
-# sites <- c("ALAM", "AOP", "BOSF", "MINN", "RGNC", "SLO") 
-
-# plot_by_site <- function (site_id) {
-#    raw <- filter(do_data, site == site_id) 
-#    visits <- filter(w_visits, site == site_id) 
-#    
-#    ggplot(raw, aes(date, do_mg_L, color = well)) +
-#      geom_line(linewidth = 3) + facet_wrap(~well) + 
-#      geom_vline(data = visits, aes(xintercept = date), 
-#                 color = "red", linetype = "dashed", alpha = 0.8) + 
-#      theme_bw() + 
-#      theme(legend.position = "none") } 
-# 
-# lapply(sites, plot_by_site) 
-# 
-data <- 
-
-
-raw_ALAM <- filter(do_data, site == "ALAM")
-ALAM_v <- filter(w_visits, site == "ALAM")
-ALAM_b <- filter(b, site == "ALAM")
-
-ggplot (raw_ALAM, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line(linewidth = 3) +
-  facet_wrap(~well) +
-  geom_vline(data = ALAM_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
-  geom_vline(data = ALAM_b, aes(xintercept = date_start), color = "red", alpha = 0.8)+
-  theme_bw()+
-  theme(legend.position = "none")
-
-raw_MINN <- filter(do_data, site == "MINN")
-MINN_v <- filter(w_visits, site == "MINN")
-
-ggplot (raw_MINN, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line(linewidth = 3) +
-  facet_wrap(~well) +
-  geom_vline(data = MINN_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
-  theme_bw()+
-  theme(legend.position = "none")
-
-raw_RGNC <- filter(do_data, site == "RGNC")
-RGNC_v <- filter(w_visits, site == "RGNC")
-
-ggplot (raw_RGNC, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line(linewidth = 3) +
-  facet_wrap(~well) +
-  geom_vline(data = RGNC_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
-  theme_bw()+
-  theme(legend.position = "none")
-
-raw_SLO <- filter(do_data, site == "SLO")
-SLO_v <- filter(w_visits, site == "SLO")
-
-ggplot (raw_SLO, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line(linewidth = 3) +
-  facet_wrap(~well) +
-  geom_vline(data = SLO_v, aes(xintercept = date), color = "red", linetype = "dashed", alpha = 0.8)+
-  theme_bw()+
   theme(legend.position = "none")
 
 
