@@ -12,18 +12,17 @@ library(tidyverse)
 #### graphing from csv files for NPOC and fDOM ####
 fDOM_csv <- read.csv("~/Documents/webster_lab/2026-05-21_fDOM-Fe-spikes.csv", header=T, fileEncoding="utf-8")
 NPOC_csv <- read.csv("~/Documents/webster_lab/2026-05-21_NPOC-Fe-spikes.csv", header=T, fileEncoding="utf-8")
-?ggplot
 
 fDOMplot <- ggplot(fDOM_csv, aes(Fe2_spike_concentration_mgL, fDOM_QSU_relative)) +
   geom_point(size=5) +
   theme_bw() +
   theme(legend.position = "none",
         plot.title=element_text(size=30, face="bold"),
-        axis.text=element_text(size=20),
+        axis.text=element_text(size=18),
         axis.title=element_text(size=24)) +
   labs(x="Fe(II) spike concentration (mg/L)", y="Relative signal of fDOM",
        title="Fe(II) effect on fDOM") +
-  ylim(0,1)
+  ylim(0.65,1)
 
 ggsave("fDOMplot_relative.png", plot=fDOMplot, path="~/Documents/webster_lab/", width = 10, height = 7, units = "in", dpi=300)
 
@@ -32,10 +31,10 @@ NPOCplot <- ggplot(NPOC_csv, aes(Fe2_spike_concentration_mgL, NPOC_mgL_relative)
   theme_bw() +
   theme(legend.position = "none",
         plot.title=element_text(size=30, face="bold"),
-        axis.text=element_text(size=20),
+        axis.text=element_text(size=18),
         axis.title=element_text(size=24)) +
   labs(x="Fe(II) spike concentration (mg/L)", y="Relative concentration of NPOC",
        title="Fe(II) effect on NPOC") +
-  ylim(0,1)
+  ylim(0.65,1)
 
 ggsave("NPOCplot_relative.png", plot=NPOCplot, path="~/Documents/webster_lab/", width = 10, height = 7, units = "in", dpi=300)
