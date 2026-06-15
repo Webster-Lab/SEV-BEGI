@@ -12,7 +12,7 @@ library(googledrive) #so we can interface with Google files
 library(tidyverse) #so we can a small amount of data transformation
 library(lubridate) #so we can change transform date-time data
 
-#### Add data to R ####
+#### Add DO data to R ####
 #add DO data, makre sure you add any new data as needed
 do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/do_raw_combined.csv")
 
@@ -25,7 +25,7 @@ drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexi
 w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.csv")
 
 #clean up disturbance data (need to finalize this)
-w <- w_visits |> #webster visits
+w_visits <- w_visits |> #webster visits
   rename(date = 1, site = location, well = Position) |>
   select(1:7) |>
   filter(model == "MX801-DO",
@@ -42,9 +42,11 @@ ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
   #facet_wrap(~well) +
   geom_vline(data = w_visits, 
-             aes(xintercept = date, color = "red"), 
+             aes(xintercept = date), 
+             color = "red", 
              linetype = "dashed", 
              alpha = 0.8)+
+  facet_wrap(~site)
   theme_bw()+
   theme(legend.position = "none")
 
@@ -64,10 +66,9 @@ b_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM
 #   mutate(date_start = ymd_hms(date_start),
 #          date_end = ymd_hms(date_end))
 
-b <- b_visits |>
+b<- b_visits |>
     drop_na(date)|>
     mutate(date = paste(date, time_start, sep = " ")) |>
-    drop_na(date)|>
     mutate(date = ymd_hms(date))
   
 
@@ -98,7 +99,7 @@ b <- b|>
 d <- data |>
   left_join(b, by = c("site", "date")) |>
   mutate(flag = if_else(!is.na(observation), "w",
-                if_else(!is.na(time_start), "b", ""))) |>
+                if_else(!is.na(time_start), "b", NA_character_))) |>
   select(-2,-6, -8, -9, -10, -11, -12, -13)
   
 #veiw all together
@@ -113,6 +114,9 @@ ggplot(d, aes(date, do_mg_L, color = well)) +
   facet_wrap( ~ well) +
   theme_bw() +
   theme(legend.position = "none")
+
+dd <- d |>
+  mutate(clean_date = replace(date, flag, NA))
 
 ##### Plot by site ####
 by_site <- d |>
