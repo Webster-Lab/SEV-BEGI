@@ -77,7 +77,7 @@ ggsave("20260615_do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-Un
 combined_do_data <- combined_do_data %>%
   select (-2,-6)
 
-write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/do_raw_combined.csv")
+write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260615_raw_do.csv")
 
 
 #### generate and save plots to local drive ####
