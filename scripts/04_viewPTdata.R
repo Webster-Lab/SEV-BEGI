@@ -89,13 +89,15 @@ water_data <- lapply(water_data, clean_pt)
 
 combined_water_data <- water_data %>% #combine data
   bind_rows (.id = "site") %>%
-  mutate(well = str_extract(site, "[^_]+$"), #take the well id out by the name
-  site = str_sub(well, 1, -2)) #take site id out of well id
+  mutate(
+    well = str_extract(site, "(?<=_)[^_]+(?=_)"), #take the well id out by the name
+    site = str_sub(well, 1, -2)) #take site id out of well id
 
 combined_air_data <- air_data %>% #combine data
   bind_rows (.id = "site") %>%
-  mutate(well = str_extract(site, "[^_]+$"), #take the well id out by the name
-         site = str_extract(site, "(?<=_)[^_]+(?=_[^_]+$)")) |>
+  mutate(
+    well = str_extract(site, "(?<=_).*"),  #take site id out of well id
+    site = str_extract(site, "(?<=_)[^_]+(?=_)")) |> #take the well id out by the name
   rename(air_Kpa = 4)
 
 #view it 
@@ -106,25 +108,82 @@ raw_kpa <- ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
   theme_bw()+
   theme(legend.position = "none")
 
-ggsave("raw_kpa.png", path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT")
+##UPDATE DATE###
+ggsave("20260615_raw_kpa.png", path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT")
+
 
 #### Correct PTs in groundwater to air PT readings ####
+### ALAM_AIR -> ALAM, MINN, RGNC -> UP
+### SLO_AIR -> AOP, HARR, SLO, BOSF, LOLU -> MID
+### SEV_AIR -> CRAW, SEV -> LOW
 
-# add air Pt data into water Pt data and subtract for corrected values (when we add more air PTs we will need to change this code to be more specific)
-PT_data<- left_join(combined_water_data, #join air and water PT by dates
-                  combined_air_data |> select (date, air_Kpa), 
-                  by = "date", relationship = "many-to-many")
+#extract by site (might just make a loop)
+ALAM <- filter(combined_water_data, site == "ALAM")
+MINN<- filter(combined_water_data, site == "MINN")
+RGNC <- filter(combined_water_data, site == "RGNC")
+AOP <- filter(combined_water_data, site == "AOP")
+HARR <- filter(combined_water_data, site == "HARR")
+SLO <- filter(combined_water_data, site == "SLO")
+LOLU <- filter(combined_water_data, site == "LOLU")
+CRAW <- filter(combined_water_data, site == "CRAW")
+SEV <- filter(combined_water_data, site == "SEV")
+BOSF <- filter(combined_water_data, site == "BOSF")
 
-PT_data <- mutate(PT_data, Kpa_corr = pressure_Kpa - air_Kpa) #add a col with corrected pressure data
+ALAM_AIR <- filter(combined_air_data, site == "ALAM")
+SLO_AIR <- filter(combined_air_data, site == "SLO")
+SEV_AIR <- filter(combined_air_data, site == "SEV")
 
-GW_Kpa <- ggplot(PT_data, aes(date, Kpa_corr, color = well))+ #veiw the data 
+#calculate upper 
+### ALAM_AIR -> ALAM, MINN, RGNC -> UP
+UP <- ALAM |>
+  bind_rows(MINN, RGNC)|>
+  left_join(ALAM_AIR |>
+              select(date, air_Kpa),
+            by = "date", relationship = "many-to-many")
+
+UP<- mutate(UP, Kpa_corr = pressure_Kpa - air_Kpa)
+
+UP_plot <- ggplot(UP, aes(date, Kpa_corr, color = well))+ #veiw the data 
   geom_line()+
   facet_wrap(~well)+
   theme_bw()
 
-ggsave("Groundwater_Kpa_corrected.png", path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT") #save the plot into the data folder
+#calculate mid
+### SLO_AIR -> AOP, HARR, SLO, BOSF, LOLU -> MID
+MID <- AOP |>
+  bind_rows(HARR, SLO, BOSF, LOLU)|>
+  left_join(SLO_AIR |>
+              select(date, air_Kpa),
+            by = "date", relationship = "many-to-many")
 
-write_csv(PT_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/corrected_Kpa_PT.csv")
+MID <- mutate(MID, Kpa_corr = pressure_Kpa - air_Kpa)
+
+MID_plot <- ggplot( MID, aes(date, Kpa_corr, color = well))+ #veiw the data 
+  geom_line()+
+  facet_wrap(~well)+
+  theme_bw()
+
+#calculate low
+### SEV_AIR -> CRAW, SEV -> LOW
+LOW <- CRAW |>
+  bind_rows(SEV)|>
+  left_join(SEV_AIR |>
+              select(date, air_Kpa),
+            by = "date", relationship = "many-to-many")
+
+LOW <- mutate(LOW, Kpa_corr = pressure_Kpa - air_Kpa)
+
+LOW_plot <- ggplot(LOW, aes(date, Kpa_corr, color = well))+ #veiw the data 
+  geom_line()+
+  facet_wrap(~well)+
+  theme_bw()
+
+#### NOTE: Need to figure out how to add missing Kpa for site before we deployed the air PT's, particular the UP grouping
+
+####Combine and save as one file ####
+PT_data <- bind_rows(UP, MID, LOW)
+
+write_csv(PT_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/20260615_Kpa_PT.csv")
 
 #### clean up before pushing to github ####
 rm(list = ls()) #removing all things from the environment 
