@@ -14,10 +14,10 @@ library(lubridate) #so we can change transform date-time data
 
 #### Add DO data to R ####
 #add DO data, makre sure you add any new data as needed
-do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/do_raw_combined.csv")
+do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260615_raw_do.csv")
 
 #### Download Webster Lab visits ####
-dist <- drive_get ("https://docs.google.com/spreadsheets/d/1T3NfyaLZTzo5YIrDL3GRKJr_MzR5IzlW/edit?gid=1055505098#gid=1055505098")
+dist <- drive_get ("https://docs.google.com/spreadsheets/d/1T3NfyaLZTzo4YIrDL2GRKJr_MzR5IzlW/edit?usp=sharing&ouid=107567537261813068113&rtpof=true&sd=true")
 drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.xlsx", overwrite = TRUE)
 
 ## STOP, go and save that file as a csv manually!!!!! (until I add script here lol)
@@ -25,28 +25,27 @@ drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexi
 w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.csv")
 
 #clean up disturbance data (need to finalize this)
-w_visits <- w_visits |> #webster visits
+a_visits <- w_visits |> #webster visits
   rename(date = 1, site = location, well = Position) |>
   select(1:7) |>
   filter(model == "MX801-DO",
-         observation == c("removed", "deployed"),
-         !site %in% c("HARR", "CRAW", "SEV")) |>
+         observation == c("removed", "deployed")) |>
   mutate(well = paste(site, well, sep= ""))|>
   unite(date, date, time, sep= " ")|>
-  mutate(date = ymd_hms(date)) |>
+  mutate(date = ymd_hm(date)) |>
   filter(date >= as.Date('2025-10-01 00:00:00')) #remove any data before we started monitoring
 
 #Visualize
-#plot data together by well
+#plot data together by well, something is very oidd about this need to investigate further
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
-  #facet_wrap(~well) +
+  facet_wrap(~well) +
   geom_vline(data = w_visits, 
              aes(xintercept = date), 
              color = "red", 
              linetype = "dashed", 
              alpha = 0.8)+
-  facet_wrap(~site)
+  facet_wrap(~site)+
   theme_bw()+
   theme(legend.position = "none")
 
