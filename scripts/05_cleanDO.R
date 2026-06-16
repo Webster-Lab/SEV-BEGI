@@ -13,7 +13,7 @@ library(tidyverse) #so we can a small amount of data transformation
 library(lubridate) #so we can change transform date-time data
 
 #### Add DO data to R ####
-#add DO data, makre sure you add any new data as needed
+#add DO data, make sure you add any new data as needed
 do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260615_raw_do.csv")
 
 #### Download Webster Lab visits ####
@@ -25,7 +25,7 @@ drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexi
 w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.csv")
 
 #clean up disturbance data (need to finalize this)
-a_visits <- w_visits |> #webster visits
+w_visits <- w_visits |> #webster visits
   rename(date = 1, site = location, well = Position) |>
   select(1:7) |>
   filter(model == "MX801-DO",
@@ -39,7 +39,6 @@ a_visits <- w_visits |> #webster visits
 #plot data together by well, something is very oidd about this need to investigate further
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
-  facet_wrap(~well) +
   geom_vline(data = w_visits, 
              aes(xintercept = date), 
              color = "red", 
@@ -233,6 +232,7 @@ ggplot() +
   theme(legend.position = "none")
 
 #### clean up before pushing to github ####
+
 rm(list = ls()) #removing all things from the environment 
 
 
