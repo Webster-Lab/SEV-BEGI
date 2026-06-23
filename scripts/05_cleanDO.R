@@ -17,6 +17,11 @@ library(lubridate) #so we can change transform date-time data
 #add DO data, make sure you add any new data as needed
 do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260615_raw_do.csv")
 
+#add a date col to our do data
+do_data <- do_data |> 
+  mutate(datetime = date,
+         date = date(datetime))
+
 #### Download Webster Lab visits ####
 dist <- drive_get ("https://docs.google.com/spreadsheets/d/1T3NfyaLZTzo4YIrDL2GRKJr_MzR5IzlW/edit?usp=sharing&ouid=107567537261813068113&rtpof=true&sd=true")
 drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.xlsx", overwrite = TRUE)
@@ -39,25 +44,25 @@ w_visits<- w_visits |> #webster visits
 #transform webster visits data so we can work with it easier
 w_visits <- w_visits |> 
   group_by(well) |> 
-  mutate(end_date = lead(datetime),
+  mutate(end = lead(datetime),
          next_status = lead(observation)) |>
   filter(
     observation == "removed", #make sure there is always a start and end time
     next_status == "deployed") |>
-  transmute(date, site, well, start_date = datetime, end_date) |>
+  transmute(date, site, well, start = datetime, end) |>
   ungroup()
 
 #Visualize webster disturbance
 #plot data together by well
 ggplot () + # view raw do by site
   geom_line(data = do_data, aes(x = date, y = do_mg_L, color = well)) +
-  geom_rect(data = w_visits,
-            aes(xmin = start_date, xmax = end_date, ymin = -Inf, ymax = Inf), fill = "red") +
-  # geom_vline(data = w_visits, 
-  #            aes(xintercept = date), 
-  #            color = "red", 
-  #            linetype = "dashed", 
-  #            alpha = 0.8)+
+  # geom_rect(data = w_visits,
+  #           aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf), fill = "red") +
+  geom_vline(data = w_visits,
+             aes(xintercept = start),
+             color = "red",
+             linetype = "dashed",
+             alpha = 0.8)+
   facet_wrap(~well)+
   theme_bw()+
   theme(legend.position = "none")
@@ -67,13 +72,13 @@ bemp_dist <- drive_get ("https://docs.google.com/spreadsheets/d/1-lf5k0gRdYGa1wD
 
 drive_download(bemp_dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/bemp_visits.xlsx", overwrite = TRUE)
 
-## STOP, go and save that file as a csv manually!!!!! (until I add script here lol)
+## STOP, go and save that file as a csv manually!!!!! 
 
 b_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/bemp_visits.csv")
 
 b_visits<- b_visits |>
-  mutate(date_end = ymd_hms(paste(date, time_end, sep = " ")),
-         date_start= ymd_hms(paste(date, time_start, sep = " ")),
+  mutate(end = ymd_hms(paste(date, time_end, sep = " ")),
+         start= ymd_hms(paste(date, time_start, sep = " ")),
          date = ymd(date)) |>
   drop_na(date)|>
   select(!c(time_start, time_end, `notes to Matt`))
@@ -81,27 +86,27 @@ b_visits<- b_visits |>
 #Visualize
 ggplot () + # view raw do by site
   geom_line(data = do_data, aes(x = date, y = do_mg_L, color = well)) +
-  geom_rect(data = b_visits,
-             aes(xmin = date_start, xmax = date_end, ymin = -Inf, ymax = Inf), fill = "red") +
-  # geom_vline(data = b_visits, 
-  #            aes(xintercept = date, color = "red"), 
-  #            linetype = "dashed", 
-  #            alpha = 0.8)+
+  # geom_rect(data = b_visits,
+  #            aes(xmin = date_start, xmax = date_end, ymin = -Inf, ymax = Inf), fill = "red") +
+  geom_vline(data = b_visits,
+             aes(xintercept = date, color = "red"),
+             linetype = "dashed",
+             alpha = 0.8)+
   facet_wrap(~site) +
   theme_bw()+
   theme(legend.position = "none")
 
-#### Combine data ####
+#### flag data ####
 
 ## Look at the disturbance data together 
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
   geom_vline(data = b_visits, 
-             aes(xintercept = date_start, color = "red"), 
+             aes(xintercept = start, color = "red"), 
              linetype = "dashed", 
              alpha = 0.8)+
   geom_vline(data = w_visits, 
-             aes(xintercept = start_date), 
+             aes(xintercept = start), 
              color = "green", 
              linetype = "dashed", 
              alpha = 0.8)+
@@ -109,15 +114,10 @@ ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   theme_bw()+
   theme(legend.position = "none")
 
-#add a date col to our do data
-data <- do_data |> 
-  mutate(datetime = date,
-         date = date(datetime))
-
 #join do and webster data together
-data <- data |>
+data <- do_data |>
 left_join(w_visits, by = join_by (date, site, well)) |>
-  mutate(disturb = between(datetime, start_date, end_date)) |> #mark whenever timews in the datetime col are between the sart and end times
+  mutate(disturb = between(datetime, start, end)) |> #mark whenever times in the datetime col are between the sart and end times
   mutate(disturb = if_else(is.na(disturb), F, disturb)) |>
   mutate(disturb = if_else(disturb, "w", ""))
 
@@ -128,10 +128,10 @@ noweb <- data |>
 #take a looky-loo
 ggplot (noweb, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
-  geom_vline(data = b_visits, 
-             aes(xintercept = date_start, color = "red"), 
-             linetype = "dashed", 
-             alpha = 0.8)+
+  # geom_vline(data = b_visits, 
+  #            aes(xintercept = date_start, color = "red"), 
+  #            linetype = "dashed", 
+  #            alpha = 0.8)+
   geom_vline(data = w_visits, 
              aes(xintercept = start_date), 
              color = "green", 
@@ -142,16 +142,16 @@ ggplot (noweb, aes(date, do_mg_L, color = well)) + # view raw do by site
   theme(legend.position = "none")
 
 
-#join do, web and bemp data, DO WORK HERE
+#join do, web and bemp data to flag when there is a known disturbance of the data
 data <- data |>
-  select(!c(start_date, end_date)) |>
-  left_join(b_visits, by = join_by (date, site)) |>
-  mutate(disturb2 = between(datetime, date_start, date_end)) |>
-  mutate(disturb2 = if_else(is.na(disturb2), F, disturb2)) |>
-  mutate(disturb2 = if_else(disturb2 == T, "b", "")) |>
-  mutate(flag = paste(disturb, disturb2)) |>
-  select(!c(date_start, date_end, disturb, disturb2)) |>
-  transmute(date, datetime, site, well, do_mg_L, temp_C, flag)
+  select(!c(start, end)) |> #remove webster cols
+  left_join(b_visits, by = join_by (date, site)) |> #join the dataframes by date and site
+  mutate(disturb2 = between(datetime, start, end)) |> #mark a new disturb col T if the datetime col fall withing the start/end cols
+  mutate(disturb2 = if_else(is.na(disturb2), F, disturb2)) |> #Remove the NAs by telling it is is false
+  mutate(disturb2 = if_else(disturb2 == T, "b", "")) |> #change TRUE to "b"
+  mutate(flag = paste(disturb, disturb2)) |> #make a new col "flag" where it is b or w
+  select(!c(start, end, disturb, disturb2)) |> #select out cols we don't need
+  transmute(date, datetime, site, well, do_mg_L, temp_C, flag) #rearrange to look pretty :)
 
 #removed both w and b visits
 cleaned <- data |>
@@ -161,11 +161,11 @@ cleaned <- data |>
 ggplot (cleaned, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
   geom_vline(data = b_visits, 
-             aes(xintercept = date_start, color = "red"), 
+             aes(xintercept = start, color = "red"), 
              linetype = "dashed", 
              alpha = 0.8)+
   geom_vline(data = w_visits, 
-             aes(xintercept = start_date), 
+             aes(xintercept = start), 
              color = "green", 
              linetype = "dashed", 
              alpha = 0.8)+
@@ -173,7 +173,7 @@ ggplot (cleaned, aes(date, do_mg_L, color = well)) + # view raw do by site
   theme_bw()+
   theme(legend.position = "none")
   
-##### Plot by site #### Its plottigng all on one, have to investigate further!
+##### Plot by site #### Its plotting all on one, have to investigate further!####
 site_clean <- cleaned |>
   group_split(site) #make a list by site
 
@@ -181,15 +181,15 @@ plot_site<- function(df, df2, df3) {
   ggplot() +
     geom_line(data = df, 
               aes(x = datetime, y = do_mg_L, color = well)) +
-    geom_vline(data = df2, 
-               aes(xintercept = date_start, color = "red"), 
-               linetype = "dashed", 
-               alpha = 0.8)+
-    geom_vline(data = df3, 
-               aes(xintercept = start_date), 
-               color = "green", 
-               linetype = "dashed", 
-               alpha = 0.8)+
+    # geom_vline(data = df2, 
+    #            aes(xintercept = start, color = "red"), 
+    #            linetype = "dashed", 
+    #            alpha = 0.8)+
+    # geom_vline(data = df3, 
+    #            aes(xintercept = start), 
+    #            color = "green", 
+    #            linetype = "dashed", 
+    #            alpha = 0.8)+
     facet_wrap(~ well) +
     theme_bw() +
     theme(legend.position = "none")
@@ -228,6 +228,10 @@ ggplot() +
   facet_wrap(~ well) +
   theme_bw() +
   theme(legend.position = "none")
+
+#### Look at data by month (ONLY if if you havent downloaded in a minute) ####
+
+
 
 #### clean up before pushing to github ####
 
