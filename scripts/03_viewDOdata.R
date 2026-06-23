@@ -44,7 +44,7 @@ for (i in seq_along(ls_raw$name)) {  #create for loop for tibble
 do_list<- list.files(path = local, full.names = TRUE, pattern = ".csv") #turns into a list
 do_data <- do_list %>% 
   set_names(~sub("\\.csv$", "", basename(.))) %>% #sets name to original files
-  map(read_csv) #reads in files to our environment
+  lapply(read_csv) #reads in files to our environment
 
 #might add a way to save the meta data, need to note any obscurities 
 
@@ -57,12 +57,12 @@ clean_do<- function(df) {
     filter(minute(date) %in% c(0, 15, 30, 45)) #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
 }
 
-do_data <- map(do_data, clean_do) #applies the function we just made to all my data listed
+do_data <- lapply(do_data, clean_do) #applies the function we just made to all my data listed
 
 ####Combine data and view and save new dataframe ####
 combined_do_data <- do_data %>% 
   bind_rows (.id = "site") %>%
-  mutate(well = str_extract(site, "(?<=_)[^_]+(?=_)")) %>%
+  mutate(well = str_extract(site, "(?<=_)[^_]+(?=_)")) %>% # extract wellID out of file name
   mutate(site = str_sub(well, 1, -2)) #take site id out of well id
 
 do_raw <- ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
@@ -72,12 +72,12 @@ do_raw <- ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view r
   theme(legend.position = "none")
 
 #UPDATE DATE
-ggsave("20260615_do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots")
+ggsave("20260623_do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots")
 
 combined_do_data <- combined_do_data %>%
   select (-2,-6)
 
-write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260615_raw_do.csv")
+write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260623_raw_do.csv")
 
 
 #### generate and save plots to local drive ####
