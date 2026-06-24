@@ -42,8 +42,9 @@ for (i in seq_along(ls_raw$name)) {  #create for loop for tibble
 #### Add data to R and do a minor clean ####
 #upload all data from local 03_raw_MX801 folder
 do_list<- list.files(path = local, full.names = TRUE, pattern = ".csv") #turns into a list
-do_data <- do_list %>% 
-  set_names(~sub("\\.csv$", "", basename(.))) %>% #sets name to original files
+
+do_data <- do_list |> 
+  set_names(~sub("\\.csv$", "", basename(.))) |> #sets name to original files
   lapply(read_csv) #reads in files to our environment
 
 #might add a way to save the meta data, need to note any obscurities 
@@ -54,8 +55,9 @@ clean_do<- function(df) {
     rename(date = 2, temp_C = 3, do_mg_L = 4) |> #renames cols to simpler names
     mutate(date = mdy_hms(date))|>
     mutate(date = round_date(date, unit = "5 minute")) |> # transforms all times to the nearest 5 mins
-    filter(minute(date) %in% c(0, 15, 30, 45)) #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
-}
+    filter(minute(date) %in% c(0, 15, 30, 45)) |> #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
+    mutate(corr_do = do_mg_L - min(do_mg_L)) #add correced col
+    }
 
 do_data <- lapply(do_data, clean_do) #applies the function we just made to all my data listed
 
@@ -71,13 +73,19 @@ do_raw <- ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view r
   theme_bw()+
   theme(legend.position = "none")
 
+do_corr <-ggplot (combined_do_data, aes(date, corr_do, color = site)) + # view raw do by site
+  geom_line() +
+  facet_wrap(~well) +
+  theme_bw()+
+  theme(legend.position = "none")
+
 #UPDATE DATE
 ggsave("20260623_do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots")
 
 combined_do_data <- combined_do_data %>%
-  select (-2,-6)
+  select (-2,-7)
 
-write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260623_raw_do.csv")
+write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260624_raw_do.csv")
 
 
 #### generate and save plots to local drive ####
