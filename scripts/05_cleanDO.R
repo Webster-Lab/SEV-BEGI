@@ -15,21 +15,25 @@ library(lubridate) #so we can change transform date-time data
 
 #### Add DO data to R ####
 #add DO data, make sure you add any new data as needed
-do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260615_raw_do.csv")
+do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260624_raw_do.csv")
 
 #add a date col to our do data
 do_data <- do_data |> 
   mutate(datetime = date,
          date = date(datetime))
 
-#### Download Webster Lab visits ####
-dist <- drive_get ("https://docs.google.com/spreadsheets/d/1T3NfyaLZTzo4YIrDL2GRKJr_MzR5IzlW/edit?usp=sharing&ouid=107567537261813068113&rtpof=true&sd=true")
-drive_download(dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.xlsx", overwrite = TRUE)
 
-## STOP, go and save that file as a csv manually!!!!! 
+#### Download Webster Lab visits ####
+webster <- drive_get ("https://docs.google.com/spreadsheets/d/1T3NfyaLZTzo4YIrDL2GRKJr_MzR5IzlW/edit?usp=sharing&ouid=107567537261813068113&rtpof=true&sd=true")
+drive_download(webster, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.xlsx", overwrite = TRUE)
+
+#####################################################.
+###STOP, go and save that file as a csv manually!!!!! 
+#####################################################.
+
 w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/w_visits.csv")
 
-#clean up disturbance data 
+#parse out deployment and removals 
 w_visits<- w_visits |> #webster visits
   rename(date = 1, 
          site = location, 
@@ -55,7 +59,7 @@ w_visits <- w_visits |>
 #Visualize webster disturbance
 #plot data together by well
 ggplot () + # view raw do by site
-  geom_line(data = do_data, aes(x = date, y = do_mg_L, color = well)) +
+  geom_line(data = do_data, aes(x = date, y = corr_do, color = well)) +
   # geom_rect(data = w_visits,
   #           aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf), fill = "red") +
   geom_vline(data = w_visits,
@@ -63,29 +67,37 @@ ggplot () + # view raw do by site
              color = "red",
              linetype = "dashed",
              alpha = 0.8)+
-  facet_wrap(~well)+
+  facet_wrap(~site)+
   theme_bw()+
   theme(legend.position = "none")
 
 #### Download BEMP visits ####
-bemp_dist <- drive_get ("https://docs.google.com/spreadsheets/d/1-lf5k0gRdYGa1wD27q3psIK4AIyqE4ZZxOStOdTGhAE/edit?usp=sharing")
+bemp <- drive_get ("https://docs.google.com/spreadsheets/d/1-lf5k0gRdYGa1wD27q3psIK4AIyqE4ZZxOStOdTGhAE/edit?usp=sharing")
 
-drive_download(bemp_dist, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/bemp_visits.xlsx", overwrite = TRUE)
+drive_download(bemp, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/bemp_visits.xlsx", overwrite = TRUE)
 
-## STOP, go and save that file as a csv manually!!!!! 
+#####################################################.
+###STOP, go and save that file as a csv manually!!!!! 
+#####################################################.
 
 b_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/bemp_visits.csv")
 
-b_visits<- b_visits |>
-  mutate(end = ymd_hms(paste(date, time_end, sep = " ")),
-         start= ymd_hms(paste(date, time_start, sep = " ")),
-         date = ymd(date)) |>
+b_visits<- b_visits |> #make the dataframe useful
   drop_na(date)|>
-  select(!c(time_start, time_end, `notes to Matt`))
+  mutate(end = ymd_hms(paste(date, time_end)),
+         start= ymd_hms(paste(date, time_start)),
+         date = ymd(date)) |>
+  select(c(date, start, end, site))
 
-#Visualize
-ggplot () + # view raw do by site
-  geom_line(data = do_data, aes(x = date, y = do_mg_L, color = well)) +
+well_names <- do_data |> #get unique well names
+  distinct(site, well)
+
+b_visits<- b_visits |> #add wells to bempo disturbance
+  left_join(well_names, by = "site")
+
+#Visualize BEMP
+ggplot () + # view raw do by site to see if disturbances overlap
+  geom_line(data = do_data, aes(x = date, y = corr_do, color = well)) +
   # geom_rect(data = b_visits,
   #            aes(xmin = date_start, xmax = date_end, ymin = -Inf, ymax = Inf), fill = "red") +
   geom_vline(data = b_visits,
@@ -96,9 +108,7 @@ ggplot () + # view raw do by site
   theme_bw()+
   theme(legend.position = "none")
 
-#### flag data ####
-
-## Look at the disturbance data together 
+## Look at the known disturbance data together 
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
   geom_vline(data = b_visits, 
@@ -109,127 +119,134 @@ ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
              aes(xintercept = start), 
              color = "green", 
              linetype = "dashed", 
-             alpha = 0.8)+
+             alpha = 0.5)+
   facet_wrap(~site) +
   theme_bw()+
   theme(legend.position = "none")
 
-#join do and webster data together
-data <- do_data |>
-left_join(w_visits, by = join_by (date, site, well)) |>
-  mutate(disturb = between(datetime, start, end)) |> #mark whenever times in the datetime col are between the sart and end times
-  mutate(disturb = if_else(is.na(disturb), F, disturb)) |>
-  mutate(disturb = if_else(disturb, "w", ""))
+#### flag data ####
 
-#with webster visits removed
-noweb <- data |>
-  filter(disturb != "w")
+#view data by well
+by_well <- do_data |>
+  group_by(well) |>
+  group_split() |>
+  set_names(well_names |>
+              pull (well))
 
-#take a looky-loo
-ggplot (noweb, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line() +
-  # geom_vline(data = b_visits, 
-  #            aes(xintercept = date_start, color = "red"), 
-  #            linetype = "dashed", 
-  #            alpha = 0.8)+
-  geom_vline(data = w_visits, 
-             aes(xintercept = start_date), 
-             color = "green", 
-             linetype = "dashed", 
-             alpha = 0.8)+
-  facet_wrap(~site) +
-  theme_bw()+
-  theme(legend.position = "none")
+all_disturb <- w_visits |>
+  bind_rows(b_visits) |>
+  select(1:5) |>
+  mutate(month = format(date, "%m"))
 
+disturb_well <- all_disturb |>
+  group_by(well) |>
+  group_split()
 
-#join do, web and bemp data to flag when there is a known disturbance of the data
-data <- data |>
-  select(!c(start, end)) |> #remove webster cols
-  left_join(b_visits, by = join_by (date, site)) |> #join the dataframes by date and site
-  mutate(disturb2 = between(datetime, start, end)) |> #mark a new disturb col T if the datetime col fall withing the start/end cols
-  mutate(disturb2 = if_else(is.na(disturb2), F, disturb2)) |> #Remove the NAs by telling it is is false
-  mutate(disturb2 = if_else(disturb2 == T, "b", "")) |> #change TRUE to "b"
-  mutate(flag = paste(disturb, disturb2)) |> #make a new col "flag" where it is b or w
-  select(!c(start, end, disturb, disturb2)) |> #select out cols we don't need
-  transmute(date, datetime, site, well, do_mg_L, temp_C, flag) #rearrange to look pretty :)
-
-#removed both w and b visits
-cleaned <- data |>
-  mutate(do_mg_L = if_else(flag != " ", NA, do_mg_L))
-
-#take a looky
-ggplot (cleaned, aes(date, do_mg_L, color = well)) + # view raw do by site
-  geom_line() +
-  geom_vline(data = b_visits, 
-             aes(xintercept = start, color = "red"), 
-             linetype = "dashed", 
-             alpha = 0.8)+
-  geom_vline(data = w_visits, 
-             aes(xintercept = start), 
-             color = "green", 
-             linetype = "dashed", 
-             alpha = 0.8)+
-  facet_wrap(~site) +
-  theme_bw()+
-  theme(legend.position = "none")
-  
-##### Plot by site #### Its plotting all on one, have to investigate further!####
-site_clean <- cleaned |>
-  group_split(site) #make a list by site
-
-plot_site<- function(df, df2, df3) {
+plot_dist <- function(df, df2) {
   ggplot() +
-    geom_line(data = df, 
-              aes(x = datetime, y = do_mg_L, color = well)) +
-    # geom_vline(data = df2, 
-    #            aes(xintercept = start, color = "red"), 
-    #            linetype = "dashed", 
-    #            alpha = 0.8)+
-    # geom_vline(data = df3, 
-    #            aes(xintercept = start), 
-    #            color = "green", 
-    #            linetype = "dashed", 
-    #            alpha = 0.8)+
-    facet_wrap(~ well) +
+    geom_line(data = df, aes(datetime, corr_do)) +
+    geom_rect(data = df2,
+              aes(xmin = start,
+                  xmax = end,
+                  ymin = -Inf, ymax = Inf),
+              fill = "darkorange") +
+    labs(title = unique(df$well)) +
     theme_bw() +
-    theme(legend.position = "none")
+    theme(legend.position = "bottom")
 }
 
-lapply (site_clean, plot_site, df2 = b_visits, df3 = w_visits)
+mapply(plot_dist, by_well, well_distrub)
 
-plot_site (site_clean [[1]],  b_visits,  w_visits)
+###upload data to r.shiny and flag any known disturbances
 
-#ALAM
-ggplot(by_site[[1]], aes(date, do_mg_L, color = well)) +
-  geom_line() +
-  geom_vline(data = by_site[[1]][by_site[[1]]$flag == "w", ],
-             aes(xintercept = date),
-             color = "red", linetype = "dashed") +
-  geom_vline(data = by_site[[1]][by_site[[1]]$flag == "b", ],
-             aes(xintercept = date),
-             color = "blue", linetype = "dashed") +
-  facet_wrap(~ well) +
-  theme_bw() +
-  theme(legend.position = "none")
+save_csv <- function(x) {
+  write.csv(by_well[[x]], file = paste0("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/months/", x, ".csv"), row.names = FALSE)
+}
+
+lapply(names(by_well), save_csv)
 
 
+#### Look at data by month (ONLY if if you haven't downloaded in a minute) ####
+m_data <- do_data |>
+  mutate(month = format(date, "%m"))
 
-scale_factor <- max(d$do_mg_L, na.rm = TRUE) / max(kpa$Kpa_corr, na.rm = TRUE)
+by_month <- m_data |>
+  group_by(month, site) |>
+  group_split() |>
+  set_names(
+    m_data |>
+      group_by(month, site) |>
+      summarise(.groups = "drop") |>
+      mutate(name = paste0(month, "_", site)) |>
+      pull(name))
 
-ggplot() +
-  geom_line(data = d, aes(date, do_mg_L), color = "blue") +
-  geom_line(data = kpa, aes(date, Kpa_corr * scale_factor), color = "red") +
-  
-  scale_y_continuous(
-    name = "DO (mg/L)",
-    sec.axis = sec_axis(~ . / scale_factor, name = "KPa")
-  ) +
-  
-  facet_wrap(~ well) +
-  theme_bw() +
-  theme(legend.position = "none")
+all_disturb <- w_visits |>
+  bind_rows(b_visits) |>
+  select(1:5) |>
+  mutate(month = format(date, "%m"))
 
-#### Look at data by month (ONLY if if you havent downloaded in a minute) ####
+dist_month <- all_disturb |>
+  group_by(month, site) |>
+  group_split() |>
+  set_names(
+    all_disturb |>
+      group_by(month, site) |>
+      summarise(.groups = "drop") |>
+      mutate(name = paste0(month, "_", site)) |>
+      pull(name))
+
+shared<- intersect(names(by_month), names(dist_month))
+
+plot <- function(df, df2) {
+  ggplot() +
+    geom_line(data = df, aes(datetime, corr_do, color = well)) +
+    geom_rect(data = df2,
+              aes(xmin = start,
+                  xmax = end,
+                  ymin = -Inf, ymax = Inf),
+              fill = "darkorange") +
+    facet_wrap(~well) +
+    labs(title = unique(df$site)) +
+    theme_bw() +
+    theme(legend.position = "bottom")
+}
+
+month_plots <- mapply(plot,
+  by_month[shared],
+  dist_month[shared])
+
+month_plots
+
+by_month_well <- m_data |>
+  group_by(month, well) |>
+  group_split() |>
+  set_names(
+    m_data |>
+      group_by(month, well) |>
+      summarise(.groups = "drop") |>
+      mutate(name = paste0(month, "_", well)) |>
+      pull(name))
+
+#Notes: Across all I need to write code to see how long it takes to brinf back to background measurments
+#RGNC_11 Nov2 a disturbance? ask BEMP
+#ALAMW_10 Oct19 distrubance?
+#RGNC_05 May22 looks like she maybe went earlier like around the 19? bemp
+#CRAW_05 May12 need to exclude May12 removal
+#SLO_04 Disturbance around April 14
+#RGNC_04 April 19? BEMP
+#RGNC_03 March 17 BEMP?
+#AOP_03 Seems like they went earlier than the PM?
+#SLO_02 seems like they wenr earlier than they said
+#AOP_02 seems earlier
+#ALAM_02 need to look a web data
+
+save_csv <- function(x) {
+  write.csv(by_month_well[[x]], file = paste0("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/months/", x, ".csv"), row.names = FALSE)
+}
+
+lapply(names(by_month_well), save_csv)
+
+#use shiny app to flag data
 
 
 
