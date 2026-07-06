@@ -129,9 +129,9 @@ ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
 #view data by well
 by_well <- do_data |>
   group_by(well) |>
-  group_split() |>
-  set_names(well_names |>
-              pull (well))
+  group_split()
+
+names(by_well) <- sapply(by_well, \(x) unique(x$well))
 
 all_disturb <- w_visits |>
   bind_rows(b_visits) |>
@@ -142,20 +142,38 @@ disturb_well <- all_disturb |>
   group_by(well) |>
   group_split()
 
+names(disturb_well) <- sapply(by_well, \(x) unique(x$well))
+
 plot_dist <- function(df, df2) {
   ggplot() +
     geom_line(data = df, aes(datetime, corr_do)) +
-    geom_rect(data = df2,
-              aes(xmin = start,
-                  xmax = end,
-                  ymin = -Inf, ymax = Inf),
-              fill = "darkorange") +
+    geom_vline(data = df2, 
+               aes(xintercept = start),
+               color = "red",
+               linetype = "dashed") +
+    # geom_rect(data = df2,
+    #           aes(xmin = start,
+    #               xmax = end,
+    #               ymin = -Inf, ymax = Inf),
+    #           fill = "darkorange") +
     labs(title = unique(df$well)) +
     theme_bw() +
     theme(legend.position = "bottom")
 }
 
-mapply(plot_dist, by_well, well_distrub)
+plots <- mapply(plot_dist, by_well, disturb_well)
+
+# Save each plot
+mapply(function(p, nm) {
+  ggsave(
+    filename = paste0(nm, ".png"),
+    plot = p,
+    path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/",
+    width = 8,
+    height = 5,
+    dpi = 300
+  )
+}, plots, names(by_well))
 
 ###upload data to r.shiny and flag any known disturbances
 
