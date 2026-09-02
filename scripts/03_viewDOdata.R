@@ -48,18 +48,42 @@ do_data <- do_list |>
   lapply(read_csv) #reads in files to our environment
 
 #might add a way to save the meta data, need to note any obscurities 
+meta <- imap_dfr(do_data, function(df, nm) {
+    parts <- str_match(nm, "^(\\d{8})_(.+?)([CNSEW])_DO$")
+    tibble(
+      name      = nm,
+      date      = as.Date(parts[,2], format = "%Y%m%d"),
+      site      = parts[,3],
+      direction = parts[,4],
+      n_obs     = nrow(df),
+      n_cols    = ncol(df)
+    )
+  })
+
+write.table(meta, pipe("pbcopy"), sep = "\t", row.names = FALSE) #copy to my clipboard
 
 #creates a function that I can run on all my files listed
 clean_do<- function(df) { 
   df |>
     rename(date = 2, temp_C = 3, do_mg_L = 4) |> #renames cols to simpler names
-    mutate(date = mdy_hms(date))|>
+    mutate(date = mdy_hms(date))|> #makes it porcess as a timedate
     mutate(date = round_date(date, unit = "5 minute")) |> # transforms all times to the nearest 5 mins
     filter(minute(date) %in% c(0, 15, 30, 45)) |> #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
-    mutate(corr_do = do_mg_L - min(do_mg_L)) #add correced col
+    mutate(corr_do = do_mg_L - min(do_mg_L)) #add corrected col
     }
 
 do_data <- lapply(do_data, clean_do) #applies the function we just made to all my data listed
+
+
+for (i in seq_along(do_data)) {   # Make a for loop to make a plots for all data files
+  p <- ggplot(do_data[[i]], aes(date, do_mg_L)) + #plot by time and do
+    geom_point() +
+    labs(y = "Dissolved Oxygen mg/L",
+         x= "Date",
+         title = names(do_data)[i]) +
+    theme_bw() }
+  
+print(p)
 
 ####Combine data and view and save new dataframe ####
 combined_do_data <- do_data %>% 
@@ -73,7 +97,9 @@ do_raw <- ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view r
   theme_bw()+
   theme(legend.position = "none")
 
-do_corr <-ggplot (combined_do_data, aes(date, corr_do, color = site)) + # view raw do by site
+do_raw
+
+temp_raw <- ggplot (combined_do_data, aes(date, log(temp_C), color = site)) + # view raw do by site
   geom_line() +
   facet_wrap(~well) +
   theme_bw()+
