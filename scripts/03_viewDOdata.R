@@ -47,7 +47,7 @@ do_data <- do_list |>
   set_names(~sub("\\.csv$", "", basename(.))) |> #sets name to original files
   lapply(read_csv) #reads in files to our environment
 
-#might add a way to save the meta data, need to note any obscurities 
+#extract information aout each file we uploaded to keep track of what has been processed
 meta <- imap_dfr(do_data, function(df, nm) {
     parts <- str_match(nm, "^(\\d{8})_(.+?)([CNSEW])_DO$")
     tibble(
@@ -74,22 +74,33 @@ clean_do<- function(df) {
 
 do_data <- lapply(do_data, clean_do) #applies the function we just made to all my data listed
 
-
-for (i in seq_along(do_data)) {   # Make a for loop to make a plots for all data files
-  p <- ggplot(do_data[[i]], aes(date, do_mg_L)) + #plot by time and do
+#Plot all datasets to see any unusual behavior 
+for (i in seq_along(do_data)) {   # Make a for loop to make do plots for all data files
+  do_plots <- ggplot(do_data[[i]], aes(date, do_mg_L)) + #plot by time and do
     geom_point() +
     labs(y = "Dissolved Oxygen mg/L",
          x= "Date",
          title = names(do_data)[i]) +
-    theme_bw() }
+    theme_bw() 
   
-print(p)
+  print (do_plots)}
+
+for (i in seq_along(do_data)) {   # Make a for loop to make temp plots for all data files
+  temp_plots <- ggplot(do_data[[i]], aes(date, temp_C)) + #plot by time and temp
+    geom_point() +
+    labs(y = "Temp C",
+         x= "Date",
+         title = names(do_data)[i]) +
+    theme_bw() 
+  
+  print (temp_plots)}
 
 ####Combine data and view and save new dataframe ####
 combined_do_data <- do_data %>% 
   bind_rows (.id = "site") %>%
   mutate(well = str_extract(site, "(?<=_)[^_]+(?=_)")) %>% # extract wellID out of file name
   mutate(site = str_sub(well, 1, -2)) #take site id out of well id
+
 
 do_raw <- ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
   geom_line() +
@@ -99,19 +110,22 @@ do_raw <- ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view r
 
 do_raw
 
-temp_raw <- ggplot (combined_do_data, aes(date, log(temp_C), color = site)) + # view raw do by site
+temp_raw <- ggplot (combined_do_data, aes(date, temp_C), color = site) + # view raw do by site
   geom_line() +
   facet_wrap(~well) +
   theme_bw()+
   theme(legend.position = "none")
 
+temp_raw
+
+
 #UPDATE DATE
-ggsave("20260623_do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots")
+ggsave("20260903_do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots")
 
 combined_do_data <- combined_do_data %>%
   select (-2,-7)
 
-write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260624_raw_do.csv")
+write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260903_raw_do.csv")
 
 
 #### generate and save plots to local drive ####
