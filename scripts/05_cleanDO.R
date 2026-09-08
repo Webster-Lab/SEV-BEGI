@@ -35,15 +35,15 @@ w_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM
 
 #parse out deployment and removals 
 w_visits<- w_visits |> #webster visits
+  filter(model == "MX801-DO", 
+         observation != "serviced") |>
   rename(date = 1, 
          site = location, 
          well = Position) |>
   select(1:7) |>
   mutate(well = paste(site, well, sep= ""),
-         datetime = ymd_hm(paste(date, time)))|>
-  filter(datetime >= as.Date('2025-10-01 00:00:00')) |> #remove any data before we started monitoring
-  filter(model == "MX801-DO", 
-         observation != "serviced")
+         datetime = ymd_hms(paste(date, time)))|>
+  filter(datetime >= as.Date('2025-10-01 00:00:00')) #remove any data before we started monitoring
 
 #transform webster visits data so we can work with it easier
 w_visits <- w_visits |> 
@@ -92,7 +92,7 @@ b_visits<- b_visits |> #make the dataframe useful
 well_names <- do_data |> #get unique well names
   distinct(site, well)
 
-b_visits<- b_visits |> #add wells to bempo disturbance
+b_visits<- b_visits |> #add wells to bemp disturbance
   left_join(well_names, by = "site")
 
 #Visualize BEMP
@@ -168,7 +168,7 @@ mapply(function(p, nm) {
   ggsave(
     filename = paste0(nm, ".png"),
     plot = p,
-    path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/",
+    path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data",
     width = 8,
     height = 5,
     dpi = 300
