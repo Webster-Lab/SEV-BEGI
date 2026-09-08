@@ -15,7 +15,7 @@ library(lubridate) #so we can change transform date-time data
 
 #### Add DO data to R ####
 #add DO data, make sure you add any new data as needed
-do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260624_raw_do.csv")
+do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260903_raw_do.csv")
 
 #add a date col to our do data
 do_data <- do_data |> 
