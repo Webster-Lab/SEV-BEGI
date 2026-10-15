@@ -9,18 +9,11 @@
 
 #### libraries ####
 library(googledrive) #so we can interface with Google files
-library(tidyverse) #so we can a small amount of data transformation
-library(lubridate) #so we can change transform date-time data
-
+library(tidyverse) #so we can do data transformation
 
 #### Add DO data to R ####
 #add DO data, make sure you add any new data as needed
-do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260903_raw_do.csv")
-
-#add a date col to our do data
-do_data <- do_data |> 
-  mutate(datetime = date,
-         date = date(datetime))
+do_data <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261013_raw_do.csv")
 
 
 #### Download Webster Lab visits ####
@@ -59,9 +52,7 @@ w_visits <- w_visits |>
 #Visualize webster disturbance
 #plot data together by well
 ggplot () + # view raw do by site
-  geom_line(data = do_data, aes(x = date, y = corr_do, color = well)) +
-  # geom_rect(data = w_visits,
-  #           aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf), fill = "red") +
+  geom_point(data = do_data, aes(x = date, y = do_mg_L, color = well)) +
   geom_vline(data = w_visits,
              aes(xintercept = start),
              color = "red",
@@ -76,18 +67,16 @@ bemp <- drive_get ("https://docs.google.com/spreadsheets/d/1-lf5k0gRdYGa1wD27q3p
 
 drive_download(bemp, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/bemp_visits.xlsx", overwrite = TRUE)
 
-#####################################################.
+#####################################################
 ###STOP, go and save that file as a csv manually!!!!! 
-#####################################################.
+#####################################################
 
 b_visits <- read_csv ("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/bemp_visits.csv")
 
 b_visits<- b_visits |> #make the dataframe useful
   drop_na(date)|>
-  mutate(end = ymd_hms(paste(date, time_end)),
-         start= ymd_hms(paste(date, time_start)),
-         date = ymd(date)) |>
-  select(c(date, start, end, site))
+  mutate(date = as.POSIXct(date)) |>
+  select(c(date, site))
 
 well_names <- do_data |> #get unique well names
   distinct(site, well)
@@ -97,7 +86,7 @@ b_visits<- b_visits |> #add wells to bemp disturbance
 
 #Visualize BEMP
 ggplot () + # view raw do by site to see if disturbances overlap
-  geom_line(data = do_data, aes(x = date, y = corr_do, color = well)) +
+  geom_line(data = do_data, aes(x = date, y = do_mg_L, color = well)) +
   # geom_rect(data = b_visits,
   #            aes(xmin = date_start, xmax = date_end, ymin = -Inf, ymax = Inf), fill = "red") +
   geom_vline(data = b_visits,
@@ -112,7 +101,7 @@ ggplot () + # view raw do by site to see if disturbances overlap
 ggplot (do_data, aes(date, do_mg_L, color = well)) + # view raw do by site
   geom_line() +
   geom_vline(data = b_visits, 
-             aes(xintercept = start, color = "red"), 
+             aes(xintercept = date, color = "red"), 
              linetype = "dashed", 
              alpha = 0.8)+
   geom_vline(data = w_visits, 
@@ -131,7 +120,7 @@ by_well <- do_data |>
   group_by(well) |>
   group_split()
 
-names(by_well) <- sapply(by_well, \(x) unique(x$well))
+names(by_well) <- sapply(by_well, \(x) unique(x$well)) #extract the names to name new data sets
 
 all_disturb <- w_visits |>
   bind_rows(b_visits) |>
@@ -146,16 +135,11 @@ names(disturb_well) <- sapply(by_well, \(x) unique(x$well))
 
 plot_dist <- function(df, df2) {
   ggplot() +
-    geom_line(data = df, aes(datetime, corr_do)) +
+    geom_line(data = df, aes(date, do_mg_L)) +
     geom_vline(data = df2, 
-               aes(xintercept = start),
+               aes(xintercept = date),
                color = "red",
                linetype = "dashed") +
-    # geom_rect(data = df2,
-    #           aes(xmin = start,
-    #               xmax = end,
-    #               ymin = -Inf, ymax = Inf),
-    #           fill = "darkorange") +
     labs(title = unique(df$well)) +
     theme_bw() +
     theme(legend.position = "bottom")
@@ -168,7 +152,7 @@ mapply(function(p, nm) {
   ggsave(
     filename = paste0(nm, ".png"),
     plot = p,
-    path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data",
+    path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/Plots",
     width = 8,
     height = 5,
     dpi = 300
@@ -178,7 +162,7 @@ mapply(function(p, nm) {
 ###upload data to r.shiny and flag any known disturbances
 
 save_csv <- function(x) {
-  write.csv(by_well[[x]], file = paste0("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/months/", x, ".csv"), row.names = FALSE)
+  write.csv(by_well[[x]], file = paste0("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/for_shiny/", x, ".csv"), row.names = FALSE)
 }
 
 lapply(names(by_well), save_csv)
