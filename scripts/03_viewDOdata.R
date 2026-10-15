@@ -10,13 +10,12 @@
 #### libraries ####
 library(googledrive) #so we can interface with Google files
 library(tidyverse) #so we can a small amount of data transformation
-library(lubridate) #so we can change transform date-time data
-
 
 #### load data from google drive #### potentially delete this
 drive_auth() # log in to google from R
 
 #choose 2 for authentication
+
 2 
 
 #### Download files into local folder ####
@@ -66,10 +65,10 @@ write.table(meta, pipe("pbcopy"), sep = "\t", row.names = FALSE) #copy to my cli
 clean_do<- function(df) { 
   df |>
     rename(date = 2, temp_C = 3, do_mg_L = 4) |> #renames cols to simpler names
-    mutate(date = mdy_hms(date))|> #makes it porcess as a timedate
+    mutate(date = mdy_hms(date))|> #makes it process as a time date
     mutate(date = round_date(date, unit = "5 minute")) |> # transforms all times to the nearest 5 mins
-    filter(minute(date) %in% c(0, 15, 30, 45)) |> #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
-    mutate(corr_do = do_mg_L - min(do_mg_L)) #add corrected col
+    filter(minute(date) %in% c(0, 15, 30, 45)) #|> #removes any data that is not on the 0, 15, 30, or 45 minute mark (some of the earlier ones were set to log every 5 mins)
+    #mutate(corr_do = do_mg_L - min(do_mg_L)) #add corrected col
     }
 
 do_data <- lapply(do_data, clean_do) #applies the function we just made to all my data listed
@@ -96,21 +95,20 @@ for (i in seq_along(do_data)) {   # Make a for loop to make temp plots for all d
   print (temp_plots)}
 
 ####Combine data and view and save new dataframe ####
-combined_do_data <- do_data %>% 
-  bind_rows (.id = "site") %>%
-  mutate(well = str_extract(site, "(?<=_)[^_]+(?=_)")) %>% # extract wellID out of file name
+combined_do_data <- do_data |> 
+  bind_rows (.id = "site") |>
+  mutate(well = str_extract(site, "(?<=_)[^_]+(?=_)")) |> # extract wellID out of file name
   mutate(site = str_sub(well, 1, -2)) #take site id out of well id
-
-
-do_raw <- ggplot (combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
-  geom_line() +
+  
+do_raw <- ggplot(combined_do_data, aes(date, do_mg_L, color = site)) + # view raw do by site
+  geom_point() +
   facet_wrap(~well) +
   theme_bw()+
   theme(legend.position = "none")
 
 do_raw
 
-temp_raw <- ggplot (combined_do_data, aes(date, temp_C), color = site) + # view raw do by site
+temp_raw <- ggplot(combined_do_data, aes(date, temp_C, color = site)) + # view raw do by site
   geom_line() +
   facet_wrap(~well) +
   theme_bw()+
@@ -120,12 +118,13 @@ temp_raw
 
 
 #UPDATE DATE
-ggsave("20260903_do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots")
+ggsave("20261013_do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots")
 
 combined_do_data <- combined_do_data %>%
-  select (-2,-7)
+  select (-2,-6) |>
+  relocate(date, site, well)
 
-write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20260903_raw_do.csv")
+write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261013_raw_do.csv")
 
 
 #### generate and save plots to local drive ####
