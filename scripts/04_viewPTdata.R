@@ -73,7 +73,19 @@ water_data <- lapply(water_list, read_csv) #read all files into R
 names(air_data) <- sub("\\.csv$", "", basename(air_list)) #renames files to original files names
 names(water_data) <- sub("\\.csv$", "", basename(water_list))
 
-#Note any overarching edits that need to be made (might add code about download meta data here)
+# meta data for these files
+###########NEED TO FIX #################
+meta <- imap_dfr(water_data, function(df, nm) {
+  parts <- str_match(nm, "^(\\d{8})_(.+?)([CNSEW])_PT$")
+  tibble(
+    name      = nm,
+    date      = as.Date(parts[,2], format = "%Y%m%d"),
+    site      = parts[,3],
+    direction = parts[,4],
+    n_obs     = nrow(df),
+    n_cols    = ncol(df)
+  )
+})
 
 #### Clean up a little ####
 clean_pt<- function(df) { 
@@ -87,6 +99,29 @@ clean_pt<- function(df) {
 air_data <- lapply(air_data, clean_pt) #applies the function we just made to all my data listed
 water_data <- lapply(water_data, clean_pt)
 
+#visual check on the Kpa data
+for (i in seq_along(water_data)) {   # Make a for loop to make temp plots for all data files
+  water_plots <- ggplot(water_data[[i]], aes(date, pressure_Kpa)) + #plot by time and temp
+    geom_point() +
+    labs(y = "Kpa",
+         x= "Date",
+         title = names(water_data)[i]) +
+    theme_bw() 
+  
+  print (water_plots)}
+
+#visual check on the temp data
+for (i in seq_along(water_data)) {   # Make a for loop to make temp plots for all data files
+  water_plots <- ggplot(water_data[[i]], aes(date, temp_C)) + #plot by time and temp
+    geom_point() +
+    labs(y = "temp",
+         x= "Date",
+         title = names(water_data)[i]) +
+    theme_bw() 
+  
+  print (water_plots)}
+
+#### Combine ####
 combined_water_data <- water_data %>% #combine data
   bind_rows (.id = "site") %>%
   mutate(
@@ -102,88 +137,18 @@ combined_air_data <- air_data %>% #combine data
 
 #view it 
 raw_kpa <- ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
-  geom_line(data = combined_water_data)+
-  geom_line(data = combined_air_data, aes(date, air_Kpa))+
+  geom_point(data = combined_water_data)+
+  geom_point(data = combined_air_data, aes(date, air_Kpa))+
   facet_wrap(~well)+
   theme_bw()+
   theme(legend.position = "none")
 
-##UPDATE DATE###
-ggsave("20260615_raw_kpa.png", path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT")
+### Save the new data ###
+#update date!
+write.csv(combined_water_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_raw_PT")
 
+write.csv(combined_air_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_raw_air")
 
-#### Correct PTs in groundwater to air PT readings ####
-### ALAM_AIR -> ALAM, MINN, RGNC -> UP
-### SLO_AIR -> AOP, HARR, SLO, BOSF, LOLU -> MID
-### SEV_AIR -> CRAW, SEV -> LOW
-
-#extract by site (might just make a loop)
-ALAM <- filter(combined_water_data, site == "ALAM")
-MINN<- filter(combined_water_data, site == "MINN")
-RGNC <- filter(combined_water_data, site == "RGNC")
-AOP <- filter(combined_water_data, site == "AOP")
-HARR <- filter(combined_water_data, site == "HARR")
-SLO <- filter(combined_water_data, site == "SLO")
-LOLU <- filter(combined_water_data, site == "LOLU")
-CRAW <- filter(combined_water_data, site == "CRAW")
-SEV <- filter(combined_water_data, site == "SEV")
-BOSF <- filter(combined_water_data, site == "BOSF")
-
-ALAM_AIR <- filter(combined_air_data, site == "ALAM")
-SLO_AIR <- filter(combined_air_data, site == "SLO")
-SEV_AIR <- filter(combined_air_data, site == "SEV")
-
-#calculate upper 
-### ALAM_AIR -> ALAM, MINN, RGNC -> UP
-UP <- ALAM |>
-  bind_rows(MINN, RGNC)|>
-  left_join(ALAM_AIR |>
-              select(date, air_Kpa),
-            by = "date", relationship = "many-to-many")
-
-UP<- mutate(UP, Kpa_corr = pressure_Kpa - air_Kpa)
-
-UP_plot <- ggplot(UP, aes(date, Kpa_corr, color = well))+ #veiw the data 
-  geom_line()+
-  facet_wrap(~well)+
-  theme_bw()
-
-#calculate mid
-### SLO_AIR -> AOP, HARR, SLO, BOSF, LOLU -> MID
-MID <- AOP |>
-  bind_rows(HARR, SLO, BOSF, LOLU)|>
-  left_join(SLO_AIR |>
-              select(date, air_Kpa),
-            by = "date", relationship = "many-to-many")
-
-MID <- mutate(MID, Kpa_corr = pressure_Kpa - air_Kpa)
-
-MID_plot <- ggplot( MID, aes(date, Kpa_corr, color = well))+ #veiw the data 
-  geom_line()+
-  facet_wrap(~well)+
-  theme_bw()
-
-#calculate low
-### SEV_AIR -> CRAW, SEV -> LOW
-LOW <- CRAW |>
-  bind_rows(SEV)|>
-  left_join(SEV_AIR |>
-              select(date, air_Kpa),
-            by = "date", relationship = "many-to-many")
-
-LOW <- mutate(LOW, Kpa_corr = pressure_Kpa - air_Kpa)
-
-LOW_plot <- ggplot(LOW, aes(date, Kpa_corr, color = well))+ #veiw the data 
-  geom_line()+
-  facet_wrap(~well)+
-  theme_bw()
-
-#### NOTE: Need to figure out how to add missing Kpa for site before we deployed the air PT's, particular the UP grouping
-
-####Combine and save as one file ####
-PT_data <- bind_rows(UP, MID, LOW)
-
-write_csv(PT_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/04_raw_PT/20260615_Kpa_PT.csv")
 
 #### clean up before pushing to github ####
 rm(list = ls()) #removing all things from the environment 
