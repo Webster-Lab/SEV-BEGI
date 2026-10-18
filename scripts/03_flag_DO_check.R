@@ -1,7 +1,7 @@
 
 library(tidyverse)
 
-data<- read.csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/maintenance_flagged/AOPW_flagged_.csv")
+data<- read.csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/maintenance_flagged/MINNW_flagged_.csv")
 
 data <- data |>
   rename(datetime=TIMESTAMP, flag = do_mg_l_flag)|>
@@ -14,4 +14,4 @@ ggplot(data, aes(datetime, do_mg_l, color = flag))+
 ggplot(data[data$flag == "",], aes(datetime, do_mg_l))+
   geom_point()
 
-write_csv(data, file = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/maintenance_flagged/AOPW_flagged_20261015.csv")
+write_csv(data, file = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/maintenance_flagged/MINNW_flagged_20261015.csv")
