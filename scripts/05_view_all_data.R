@@ -17,19 +17,63 @@ do_data<- do_data |>
   bind_rows ()
 
 #see what it looks like without the flags
-do_flag <-do_data |> 
+do_flag <-do_data |>
   filter(is.na(flag))
 
 #check them out
-ggplot(do_flag, aes(datetime, do_mg_l, color = well))+
+ggplot(do_data, aes(datetime, do_mg_l, color = well))+
   geom_point()+
   facet_wrap(~well)
 
 
 ##### Upload corrected PT data ####
 
-PT<- read.csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_corr_PT")
+PT<- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_corr_PT")
 
+PT<- PT |>
+  select(!c(1,3)) |>
+  rename(datetime = date, temp_C_PT = temp_C)
+
+ggplot(PT, aes(datetime, pressure_Kpa, color = site)) +
+  geom_point() +
+  facet_wrap ( ~well)
+
+ggplot(PT, aes(datetime, corr_Kpa, color = site)) +
+  geom_point() +
+  facet_wrap ( ~well)
+
+#### Combine them #####
+
+data <- left_join(do_flag, PT, by = c("datetime", "well", "site"))
+
+ggplot(data, aes(x = datetime, color = well))+
+  geom_point(aes(y = do_mg_l)) +
+  geom_point(aes(y = pressure_Kpa))+
+  facet_wrap( ~site)
+
+#### Break it up by well #####
+
+data_site <- data |>
+  group_by(site) |>
+  group_split()
+
+names(data_site) <- sapply(data_site, \(x) unique(x$site)) #extract the names to name new data sets
+
+for (i in seq_along(data_site)) {   # Make a for loop to make do plots for all data files
+  plots <- ggplot(data_site[[i]], aes(x = datetime)) +
+    geom_point(aes(y = do_mg_l)) +                                   
+    geom_point(aes(y = pressure_Kpa / 100)) +
+    facet_wrap( ~ well) +
+    scale_y_continuous(sec.axis = sec_axis(~ . * 100,
+                                           name = "Pressure (kPa)")) + 
+    labs(y = "Dissolved Oxygen mg/L",
+         x= "Date",
+         title = names(data_site)[i]) +
+    theme_bw() 
+  
+  print (plots)}
+
+  
 #### Add USGS stream guage data ####
 
 usgs_sites <- c("USGS-08329918",   #Rio Grande at Alameda Bridge at Alameda
