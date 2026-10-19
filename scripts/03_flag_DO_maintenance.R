@@ -168,67 +168,6 @@ save_csv <- function(x) {
 lapply(names(by_well), save_csv)
 
 
-#### Look at data by month (ONLY if if you haven't downloaded in a minute) ####
-m_data <- do_data |>
-  mutate(month = format(date, "%m"))
-
-by_month <- m_data |>
-  group_by(month, site) |>
-  group_split() |>
-  set_names(
-    m_data |>
-      group_by(month, site) |>
-      summarise(.groups = "drop") |>
-      mutate(name = paste0(month, "_", site)) |>
-      pull(name))
-
-all_disturb <- w_visits |>
-  bind_rows(b_visits) |>
-  select(1:5) |>
-  mutate(month = format(date, "%m"))
-
-dist_month <- all_disturb |>
-  group_by(month, site) |>
-  group_split() |>
-  set_names(
-    all_disturb |>
-      group_by(month, site) |>
-      summarise(.groups = "drop") |>
-      mutate(name = paste0(month, "_", site)) |>
-      pull(name))
-
-shared<- intersect(names(by_month), names(dist_month))
-
-plot <- function(df, df2) {
-  ggplot() +
-    geom_line(data = df, aes(datetime, corr_do, color = well)) +
-    geom_rect(data = df2,
-              aes(xmin = start,
-                  xmax = end,
-                  ymin = -Inf, ymax = Inf),
-              fill = "darkorange") +
-    facet_wrap(~well) +
-    labs(title = unique(df$site)) +
-    theme_bw() +
-    theme(legend.position = "bottom")
-}
-
-month_plots <- mapply(plot,
-  by_month[shared],
-  dist_month[shared])
-
-month_plots
-
-by_month_well <- m_data |>
-  group_by(month, well) |>
-  group_split() |>
-  set_names(
-    m_data |>
-      group_by(month, well) |>
-      summarise(.groups = "drop") |>
-      mutate(name = paste0(month, "_", well)) |>
-      pull(name))
-
 #Notes: Across all I need to write code to see how long it takes to brinf back to background measurments
 #RGNC_11 Nov2 a disturbance? ask BEMP
 #ALAMW_10 Oct19 distrubance?
