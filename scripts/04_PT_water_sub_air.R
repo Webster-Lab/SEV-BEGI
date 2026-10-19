@@ -42,5 +42,5 @@ corr_combined <- bind_rows(corrected)
 
 #### NOTE: Need to figure out how to add missing Kpa for site before we deployed the air PT's, particular the UP grouping
 
-write.csv(corr_combined, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_corr_PT")
+write_csv(corr_combined, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_corr_PT")
 
