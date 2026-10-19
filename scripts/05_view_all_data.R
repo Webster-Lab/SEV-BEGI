@@ -5,7 +5,7 @@ library(tidyverse)
 library(ggplot2)
 
 
-##### Download flagged data ####
+##### Upload DO flagged data ####
 do_list<- list.files(path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/maintenance_flagged", full.names = TRUE, pattern = ".csv")
 
 do_data <- do_list |> 
@@ -24,6 +24,11 @@ do_flag <-do_data |>
 ggplot(do_flag, aes(datetime, do_mg_l, color = well))+
   geom_point()+
   facet_wrap(~well)
+
+
+##### Upload corrected PT data ####
+
+PT<- read.csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_corr_PT")
 
 #### Add USGS stream guage data ####
 
