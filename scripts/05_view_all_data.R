@@ -13,15 +13,12 @@ do_data <- do_list |>
   lapply(read_csv) 
 
 #bind them together
-do_data<- do_data |> 
+do_bind<- do_data |> 
   bind_rows ()
 
-#see what it looks like without the flags
-do_flag <-do_data |>
-  filter(is.na(flag))
 
 #check them out
-ggplot(do_data, aes(datetime, do_mg_l, color = well))+
+ggplot(do_bind, aes(datetime, do_mg_l, color = well))+
   geom_point()+
   facet_wrap(~well)
 
@@ -44,43 +41,72 @@ ggplot(PT, aes(datetime, corr_Kpa, color = site)) +
 
 #### Combine them #####
 
-data <- left_join(do_flag, PT, by = c("datetime", "well", "site"))
+data <- left_join(do_bind, PT, by = c("well", "site", "datetime"))
 
 ggplot(data, aes(x = datetime, color = well))+
   geom_point(aes(y = do_mg_l)) +
   geom_point(aes(y = pressure_Kpa))+
   facet_wrap( ~site)
 
+#### Remove flags ####
+
+#see what it looks like without the flags
+data_flag <-data |>
+  filter(is.na(flag))
+
+ggplot(data_flag, aes(x = datetime, color = well))+
+  geom_point(aes(y = do_mg_l)) +
+  geom_point(aes(y = pressure_Kpa))+
+  facet_wrap( ~site)
+
 #### Break it up by well #####
 
-data_site <- data |>
-  group_by(site) |>
+data_well <- data_flag |>
+  group_by(well) |>
   group_split()
 
-names(data_site) <- sapply(data_site, \(x) unique(x$site)) #extract the names to name new data sets
+names(data_well) <- sapply(data_well, \(x) unique(x$well)) #extract the names to name new data sets
 
-for (i in seq_along(data_site)) {   # Make a for loop to make do plots for all data files
-  plots <- ggplot(data_site[[i]], aes(x = datetime)) +
-    geom_point(aes(y = do_mg_l)) +                                   
-    geom_point(aes(y = pressure_Kpa / 100)) +
-    facet_wrap( ~ well) +
-    scale_y_continuous(sec.axis = sec_axis(~ . * 100,
-                                           name = "Pressure (kPa)")) + 
+for (i in seq_along(data_well)) {   # Make a for loop to make do plots for all data files
+  plots <- ggplot(data_well[[i]], aes(x = datetime, do_mg_l, color = site)) +
+    geom_point(do_mg_l, color = site) +                      
     labs(y = "Dissolved Oxygen mg/L",
          x= "Date",
-         title = names(data_site)[i]) +
+         title = names(data_well)[i]) +
     theme_bw() 
   
   print (plots)}
 
+# Make a for loop to make do plots for all data files
+
+max_pressure <- sapply(data_well, function(df) max(df$pressure_Kpa, na.rm = TRUE))
+
+for (i in seq_along(data_well)) {
+  plots <- ggplot(data_well[[i]], aes(x = datetime)) +
+    geom_point(aes(y = do_mg_l), color = "blue") +
+    geom_point(aes(y = (113-pressure_Kpa)), color = "red") +
+    scale_y_continuous(
+      name = "DO (mg/L)",
+      sec.axis = sec_axis(
+        ~ . ,
+        name = "'Depth to ground water' (113-Kpa)")
+    )+
+    labs(y = "Kpa",
+         x= "Date",
+         title = names(data_well)[i]) +
+    theme_bw()
+    
+  print (plots)}
   
 #### Add USGS stream guage data ####
 
-usgs_sites <- c("USGS-08329918",   #Rio Grande at Alameda Bridge at Alameda
-                "USGS-08330000",   #Rio Grande at Albuquerque
-                "USGS-08330830",   #Rio Grande at Valle de Oro
-                "USGS-08331160",   #Rio Grande near Bosque Farms
-                "USGS-08354900")   #Rio Grande Floodway at San Acacia
+usgs_sites <- c("USGS-08330000")
+
+ # "USGS-08329918")   #Rio Grande at Alameda Bridge at Alameda
+                #"USGS-08330000"),   #Rio Grande at Albuquerque
+                # "USGS-08330830",   #Rio Grande at Valle de Oro
+                # "USGS-08331160",   #Rio Grande near Bosque Farms
+                # "USGS-08354900")   #Rio Grande Floodway at San Acacia
 
 ## BEGI Sites to USGS Guages ##
 #  MINN & ALAM   08329918  
@@ -92,15 +118,16 @@ usgs_sites <- c("USGS-08329918",   #Rio Grande at Alameda Bridge at Alameda
 flow <- read_waterdata_continuous(
   monitoring_location_id = usgs_sites,
   parameter_code = "00060",
-  time = c("2025-10-01", NA))
-
+  time = c("2025-10-17", NA))
+  
 flow <- flow |>
   select(c(monitoring_location_id, time, value)) |>
-  rename("usgs" = "monitoring_location_id", "datetime" = "time", "flow_cfs" = "value")
+  rename("usgs" = "monitoring_location_id", "datetime" = "time", "flow_cfs" = "value") |>
+  filter(between(datetime, as.Date("2025-10-18"), as.Date("2026-9-25")))
 
-ggplot(flow, aes(datetime, flow_cfs, color = usgs)) +
-  geom_point() +
-  facet_wrap( ~usgs)
+ggplot(flow, aes(datetime, flow_cfs), color = "blue") +
+  geom_line()+
+  theme_bw()
 
 
 wells <- do_data |>
