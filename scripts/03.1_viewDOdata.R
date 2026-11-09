@@ -121,10 +121,10 @@ temp_raw
 ggsave("20261013_do_raw.png", do_raw, path = "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/03_raw_MX801/plots")
 
 combined_do_data <- combined_do_data %>%
-  select (-2,-6) |>
+  select (-2) |>
   relocate(date, site, well)
 
-write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261013_raw_do.csv")
+write_csv(combined_do_data,"~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261106_raw_do.csv")
 
 
 #### generate and save plots to local drive ####
