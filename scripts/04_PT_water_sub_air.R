@@ -6,8 +6,8 @@ library(tidyverse) #so we can do data transformation
 #### Add PT data to R ####
 #add PT data, make sure you add any new data as needed
 
-PT <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_raw_PT")
-air <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_raw_air")
+PT <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261108_raw_PT")
+air <- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261108_raw_air")
 
 #### by well ###
 PT_site <- PT |>
@@ -28,7 +28,7 @@ names(air_site) <- sapply(air_site, \(x) unique(x$well)) #extract the names to n
 # SEV_AIR -> CRAW, SEV -> LOW
 
 air_map <- c(ALAM = "ALAM_AIR", MINN = "ALAM_AIR",  RGNC = "ALAM_AIR",
-             AOP = "SLO_AIR", HARR = "SLO_AIR", SLO = "SLO_AIR", BOSF = "SLO_AIR", LOLU = "SLO_AIR",
+             AOP = "ALAM_AIR", HARR = "SLO_AIR", SLO = "SLO_AIR", BOSF = "SLO_AIR", LOLU = "SLO_AIR",
              CRAW = "SEV_AIR", SEV = "SEV_AIR")
 
 corrected <- lapply(names(PT_site), \(nm) {
@@ -41,6 +41,13 @@ corrected <- lapply(names(PT_site), \(nm) {
 corr_combined <- bind_rows(corrected)
 
 #### NOTE: Need to figure out how to add missing Kpa for site before we deployed the air PT's, particular the UP grouping
+##I will add airport data ###
 
-write_csv(corr_combined, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_corr_PT")
 
+write_csv(corr_combined, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261108_corr_PT")
+
+#### clean up before pushing to github ####
+rm(list = ls()) #removing all things from the environment 
+
+
+# now commit your changes and and push them to github!!

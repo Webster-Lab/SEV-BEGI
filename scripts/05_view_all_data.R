@@ -14,8 +14,9 @@ do_data <- do_list |>
 
 #bind them together
 do_bind<- do_data |> 
-  bind_rows ()
-
+  bind_rows () |>
+  unite(do_mg_l_flag, flag) |>
+  select(-site_name)
 
 #check them out
 ggplot(do_bind, aes(datetime, do_mg_l, color = well))+
@@ -25,23 +26,23 @@ ggplot(do_bind, aes(datetime, do_mg_l, color = well))+
 
 ##### Upload corrected PT data ####
 
-PT<- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_corr_PT")
+PT<- read_csv("~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261108_corr_PT")
 
 PT<- PT |>
   select(!c(1,3)) |>
   rename(datetime = date, temp_C_PT = temp_C)
 
-ggplot(PT, aes(datetime, pressure_Kpa, color = site)) +
+ggplot(PT, aes(datetime, pressure_Kpa)) +
   geom_point() +
   facet_wrap ( ~well)
 
-ggplot(PT, aes(datetime, corr_Kpa, color = site)) +
+ggplot(PT, aes(datetime, corr_Kpa)) +
   geom_point() +
   facet_wrap ( ~well)
 
 #### Combine them #####
 
-data <- left_join(do_bind, PT, by = c("well", "site", "datetime"))
+data <- left_join(do_bind, PT, by = c("well", "datetime"))
 
 ggplot(data, aes(x = datetime, color = well))+
   geom_point(aes(y = do_mg_l)) +
@@ -52,12 +53,13 @@ ggplot(data, aes(x = datetime, color = well))+
 
 #see what it looks like without the flags
 data_flag <-data |>
-  filter(is.na(flag))
+  filter(do_mg_l_flag == "NA") |>
+  filter(as.Date(datetime) >= as.Date("2026-07-01"))
 
 ggplot(data_flag, aes(x = datetime, color = well))+
   geom_point(aes(y = do_mg_l)) +
-  geom_point(aes(y = pressure_Kpa))+
-  facet_wrap( ~site)
+  #geom_point(aes(y = corr_Kpa))+
+  facet_wrap( ~well)
 
 #### Break it up by well #####
 
@@ -69,7 +71,7 @@ names(data_well) <- sapply(data_well, \(x) unique(x$well)) #extract the names to
 
 for (i in seq_along(data_well)) {   # Make a for loop to make do plots for all data files
   plots <- ggplot(data_well[[i]], aes(x = datetime, do_mg_l, color = site)) +
-    geom_point(do_mg_l, color = site) +                      
+    geom_point() +                      
     labs(y = "Dissolved Oxygen mg/L",
          x= "Date",
          title = names(data_well)[i]) +
@@ -97,6 +99,26 @@ for (i in seq_along(data_well)) {
     theme_bw()
     
   print (plots)}
+
+#### For Rio Grande Release ####
+
+for (i in seq_along(data_well)) {
+  plots <- ggplot(data_well[[i]], aes(x = datetime)) +
+    geom_point(aes(y = do_mg_l), color = "blue") +
+    geom_point(aes(y = (corr_Kpa)), color = "red") +
+    scale_y_continuous(
+      name = "DO (mg/L)",
+      sec.axis = sec_axis(
+        ~ . ,
+        name = "'Ground water table' (Kpa)")
+    )+
+    labs(y = "Kpa",
+         x= "Date",
+         title = names(data_well)[i]) +
+    theme_bw()
+  
+  print (plots)}
+
   
 #### Add USGS stream guage data ####
 
@@ -123,7 +145,7 @@ flow <- read_waterdata_continuous(
 flow <- flow |>
   select(c(monitoring_location_id, time, value)) |>
   rename("usgs" = "monitoring_location_id", "datetime" = "time", "flow_cfs" = "value") |>
-  filter(between(datetime, as.Date("2025-10-18"), as.Date("2026-9-25")))
+  filter(between(datetime, as.Date("2026-07-01"), as.Date("2026-09-25")))
 
 ggplot(flow, aes(datetime, flow_cfs), color = "blue") +
   geom_line()+

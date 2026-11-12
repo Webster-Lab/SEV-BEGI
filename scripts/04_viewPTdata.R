@@ -126,14 +126,18 @@ combined_water_data <- water_data %>% #combine data
   bind_rows (.id = "site") %>%
   mutate(
     well = str_extract(site, "(?<=_)[^_]+(?=_)"), #take the well id out by the name
-    site = str_sub(well, 1, -2)) #take site id out of well id
+    site = str_sub(well, 1, -2)) |> #take site id out of well id
+  select(-c(2)) |>
+  relocate(date, site, well)
 
 combined_air_data <- air_data %>% #combine data
   bind_rows (.id = "site") %>%
   mutate(
     well = str_extract(site, "(?<=_).*"),  #take site id out of well id
     site = str_extract(site, "(?<=_)[^_]+(?=_)")) |> #take the well id out by the name
-  rename(air_Kpa = 4)
+  rename(air_Kpa = 4) |>
+  select(-c(2)) |>
+  relocate(date, site, well)
 
 #view it 
 raw_kpa <- ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
@@ -143,11 +147,13 @@ raw_kpa <- ggplot(combined_water_data, aes(date, pressure_Kpa, color = well))+
   theme_bw()+
   theme(legend.position = "none")
 
+raw_kpa
+
 ### Save the new data ###
 #update date!
-write.csv(combined_water_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_raw_PT")
+write.csv(combined_water_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261108_raw_PT")
 
-write.csv(combined_air_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261018_raw_air")
+write.csv(combined_air_data, "~/Library/CloudStorage/OneDrive-UniversityofNewMexico/UNM/BEGI/Data/05_combined_cleaned/20261108_raw_air")
 
 
 #### clean up before pushing to github ####
